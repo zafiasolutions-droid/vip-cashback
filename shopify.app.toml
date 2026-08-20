@@ -2,7 +2,7 @@
 
 client_id = "7c2b0cfdf312f414542ab0239943c374"
 name = "VIP Cashback"
-application_url = "https://shopify.dev/apps/default-app-home"
+application_url = "https://vip-cashback.onrender.com"
 embedded = true
 
 [build]
@@ -27,7 +27,7 @@ topics = ["app/uninstalled"]
 scopes = "read_orders,read_products,write_products,read_customers"
 
 [auth]
-redirect_urls = ["https://shopify.dev/apps/default-app-home/api/auth"]
+redirect_urls = ["https://vip-cashback.onrender.com/api/auth"]
 
 [product.metafields.app.demo_info]
 type = "single_line_text_field"
