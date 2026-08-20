@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires              DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName            String?
+  lastName             String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+model AppSettings {
+  id                    Int      @id @default(autoincrement())
+  shop                  String   @unique
+  cashbackPercentage    Float    @default(1.0)
+  excludedProductIds    String   @default("")
+  excludedCollectionIds String   @default("")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model Customer {
+  id                Int               @id @default(autoincrement())
+  shop              String
+  shopifyCustomerId String
+  email             String?
+  firstName         String?
+  lastName          String?
+  cashbackBalance   Float             @default(0.0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  cashbackEntries   CashbackLedger[]
+
+  @@unique([shop, shopifyCustomerId])
+}
+
+model CashbackLedger {
+  id          Int       @id @default(autoincrement())
+  customerId  Int
+  shop        String
+  type        String
+  amount      Float
+  orderId     String?
+  description String?
+  createdAt   DateTime  @default(now())
+
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([shop])
+  @@unique([shop, orderId])
+}
