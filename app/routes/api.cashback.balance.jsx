@@ -1,11 +1,25 @@
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://extensions.shopifycdn.com",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+};
+
 export async function loader({ request }) {
   console.log("=== CASHBACK BALANCE REQUEST RECEIVED ===");
 
+  // Handle browser CORS preflight request
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+
   try {
-    const { sessionToken, cors } =
+    const { sessionToken } =
       await authenticate.public.customerAccount(request);
 
     console.log("Session token:", sessionToken);
@@ -13,25 +27,23 @@ export async function loader({ request }) {
     const customerGid = sessionToken.sub;
 
     if (!customerGid) {
-      return cors(
-        new Response(
-          JSON.stringify({
-            error: "Customer ID not found.",
-          }),
-          {
-            status: 401,
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        )
+      return new Response(
+        JSON.stringify({
+          error: "Customer ID not found.",
+        }),
+        {
+          status: 401,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        }
       );
     }
 
     const shopifyCustomerId = customerGid.split("/").pop();
 
-    const shop =
-      new URL(sessionToken.iss).hostname;
+    const shop = new URL(sessionToken.iss).hostname;
 
     console.log("Customer ID:", shopifyCustomerId);
     console.log("Shop:", shop);
@@ -47,18 +59,17 @@ export async function loader({ request }) {
 
     console.log("Customer found:", customer);
 
-    return cors(
-      new Response(
-        JSON.stringify({
-          cashbackBalance: customer?.cashbackBalance ?? 0,
-        }),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      )
+    return new Response(
+      JSON.stringify({
+        cashbackBalance: customer?.cashbackBalance ?? 0,
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      }
     );
   } catch (error) {
     console.error("=== CASHBACK BALANCE ERROR ===");
@@ -66,15 +77,32 @@ export async function loader({ request }) {
 
     return new Response(
       JSON.stringify({
-        error: error.message || "Unable to load cashback balance.",
+        error: error instanceof Error
+          ? error.message
+          : "Unable to load cashback balance.",
       }),
       {
         status: 500,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
+          ...corsHeaders,
         },
       }
     );
   }
+}
+
+export async function action({ request }) {
+  // Explicitly handle OPTIONS requests
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+
+  return new Response("Method Not Allowed", {
+    status: 405,
+    headers: corsHeaders,
+  });
 }
