@@ -34,6 +34,7 @@ model AppSettings {
   id                    Int      @id @default(autoincrement())
   shop                  String   @unique
   cashbackPercentage    Float    @default(1.0)
+  minimumPurchaseAmount Float    @default(0)
   excludedProductIds    String   @default("")
   excludedCollectionIds String   @default("")
   createdAt             DateTime @default(now())
