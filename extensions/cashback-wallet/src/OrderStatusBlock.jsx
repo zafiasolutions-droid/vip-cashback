@@ -1,45 +1,47 @@
-import { render } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import '@shopify/ui-extensions/preact';
+import { render } from 'preact';
+import { useEffect, useState } from 'preact/hooks';
 
-export default function extension() {
-  render(<Extension />, document.body);
-}
+export default async () => {
+  render(<CashbackWallet />, document.body);
+};
 
-function Extension() {
+function CashbackWallet() {
   const [cashbackBalance, setCashbackBalance] = useState(null);
-const [error, setError] = useState("");
+  const [error, setError] = useState('');
+
   useEffect(() => {
     async function loadCashback() {
       try {
         const token = await shopify.sessionToken.get();
 
         const response = await fetch(
-          "https://vip-cashback.onrender.com/api/cashback/balance",
+          'https://vip-cashback.onrender.com/api/cashback/balance',
           {
-            method: "GET",
+            method: 'GET',
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
+              'Content-Type': 'application/json',
             },
-          }
+          },
         );
 
         const data = await response.json();
 
         if (!response.ok) {
           throw new Error(
-            data.error || "Unable to load cashback balance."
+            data?.error || 'Unable to load cashback balance.',
           );
         }
 
         setCashbackBalance(data.cashbackBalance ?? 0);
       } catch (err) {
-        console.error("Cashback wallet error:", err);
+        console.error('Cashback wallet error:', err);
 
         if (err instanceof Error) {
           setError(err.message);
         } else {
-          setError("Unable to load your cashback balance.");
+          setError('Unable to load your cashback balance.');
         }
       }
     }
@@ -54,13 +56,13 @@ const [error, setError] = useState("");
           <s-text>Loading cashback balance...</s-text>
         )}
 
-        {error && (
+        {!!error && (
           <s-banner tone="critical">
             <s-text>{error}</s-text>
           </s-banner>
         )}
 
-        {cashbackBalance !== null && error === null && (
+        {cashbackBalance !== null && !error && (
           <s-stack direction="block" gap="base">
             <s-text>Available Cashback</s-text>
 
