@@ -1,4 +1,4 @@
-
+import '@shopify/ui-extensions/preact';
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 
@@ -8,8 +8,11 @@ export default function extension() {
 
 function Extension() {
   const [cashbackBalance, setCashbackBalance] = useState(0);
-const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [useCashback, setUseCashback] = useState(false);
+  const [redeemAmount, setRedeemAmount] = useState('');
 
   useEffect(() => {
     async function loadCashback() {
@@ -38,7 +41,6 @@ const [isLoading, setIsLoading] = useState(true);
         setCashbackBalance(
           Number(data.cashbackBalance ?? 0)
         );
-        setIsLoading(false);
       } catch (err) {
         console.error('Cashback checkout error:', err);
 
@@ -47,12 +49,67 @@ const [isLoading, setIsLoading] = useState(true);
             ? err.message
             : 'Unable to load cashback balance.'
         );
+      } finally {
         setIsLoading(false);
       }
     }
 
     loadCashback();
   }, []);
+/**
+ * @param {any} event
+ */
+  function handleCashbackToggle(event) {
+    const target = event.currentTarget;
+
+    if (!target) {
+      return;
+    }
+
+    const checked = target.checked;
+
+    setUseCashback(checked);
+
+    if (!checked) {
+      setRedeemAmount('');
+    }
+  }
+/**
+ * @param {any} event
+ */
+  function handleRedeemAmountChange(event) {
+    const target = event.currentTarget;
+
+    if (!target) {
+      return;
+    }
+
+    const value = target.value;
+
+    if (value === '') {
+      setRedeemAmount('');
+      return;
+    }
+
+    const amount = Number(value);
+
+    if (!Number.isFinite(amount) || amount < 0) {
+      return;
+    }
+
+    // Customer available cashback balance se zyada use nahi kar sakta
+    const validAmount = Math.min(
+      amount,
+      cashbackBalance
+    );
+
+    setRedeemAmount(String(validAmount));
+  }
+
+  const selectedCashback = Math.min(
+    Math.max(Number(redeemAmount) || 0, 0),
+    cashbackBalance
+  );
 
   return (
     <s-banner heading="VIP Cashback">
@@ -77,6 +134,39 @@ const [isLoading, setIsLoading] = useState(true);
           <s-heading>
             ${cashbackBalance.toFixed(2)}
           </s-heading>
+
+          {cashbackBalance > 0 && (
+            <>
+              <s-checkbox
+                label="Use my cashback"
+                checked={useCashback}
+                onChange={handleCashbackToggle}
+              />
+
+              {useCashback && (
+                <>
+                  <s-text-field
+                    label="Cashback amount to use"
+                  
+                    value={redeemAmount}
+                    onInput={handleRedeemAmountChange}
+                  />
+
+                  {selectedCashback > 0 && (
+                    <s-text>
+                      Cashback selected: $
+                      {selectedCashback.toFixed(2)}
+                    </s-text>
+                  )}
+
+                  <s-text>
+                    Maximum available: $
+                    {cashbackBalance.toFixed(2)}
+                  </s-text>
+                </>
+              )}
+            </>
+          )}
 
           {cashbackBalance > 0 ? (
             <s-text>
