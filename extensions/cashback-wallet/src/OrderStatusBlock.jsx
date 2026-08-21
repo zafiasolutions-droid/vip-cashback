@@ -1,14 +1,13 @@
 import { render } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
-export default async () => {
+export default function extension() {
   render(<Extension />, document.body);
-};
+}
 
 function Extension() {
   const [cashbackBalance, setCashbackBalance] = useState(null);
-  const [error, setError] = useState(null);
-
+const [error, setError] = useState("");
   useEffect(() => {
     async function loadCashback() {
       try {
@@ -36,9 +35,12 @@ function Extension() {
         setCashbackBalance(data.cashbackBalance ?? 0);
       } catch (err) {
         console.error("Cashback wallet error:", err);
-        setError(
-          err.message || "Unable to load your cashback balance."
-        );
+
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("Unable to load your cashback balance.");
+        }
       }
     }
 
@@ -58,7 +60,7 @@ function Extension() {
           </s-banner>
         )}
 
-        {cashbackBalance !== null && !error && (
+        {cashbackBalance !== null && error === null && (
           <s-stack direction="block" gap="base">
             <s-text>Available Cashback</s-text>
 
