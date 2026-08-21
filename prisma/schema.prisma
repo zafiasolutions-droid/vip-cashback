@@ -37,6 +37,10 @@ model AppSettings {
   minimumPurchaseAmount Float    @default(0)
   excludedProductIds    String   @default("")
   excludedCollectionIds String   @default("")
+
+  cashbackUsageMode     String   @default("all")
+  eligibleCollectionIds String   @default("")
+
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

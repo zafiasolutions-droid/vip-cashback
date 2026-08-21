@@ -47,6 +47,8 @@ export const loader = async ({ request }) => {
     cashbackPercentage: settings.cashbackPercentage,
     excludedProductIds: settings.excludedProductIds ?? "",
     excludedCollectionIds: settings.excludedCollectionIds ?? "",
+    cashbackUsageMode: settings.cashbackUsageMode ?? "all",
+eligibleCollectionIds: settings.eligibleCollectionIds ?? "",
     products: data.data.products.nodes,
     collections: data.data.collections.nodes,
   };
@@ -68,6 +70,30 @@ export const action = async ({ request }) => {
   const excludedCollectionIds = String(
     formData.get("excludedCollectionIds") ?? "",
   ).trim();
+  const cashbackUsageMode = String(
+  formData.get("cashbackUsageMode") ?? "all",
+);
+
+const eligibleCollectionIds = String(
+  formData.get("eligibleCollectionIds") ?? "",
+).trim();
+if (
+  cashbackUsageMode !== "all" &&
+  cashbackUsageMode !== "collections"
+) {
+  return {
+    error: "Invalid cashback usage mode.",
+  };
+}
+
+if (
+  cashbackUsageMode === "collections" &&
+  !eligibleCollectionIds
+) {
+  return {
+    error: "Please select an eligible collection.",
+  };
+}
 
   if (
     !Number.isFinite(cashbackPercentage) ||
@@ -87,12 +113,16 @@ export const action = async ({ request }) => {
       cashbackPercentage,
       excludedProductIds,
       excludedCollectionIds,
+      cashbackUsageMode,
+eligibleCollectionIds,
     },
     create: {
       shop: session.shop,
       cashbackPercentage,
       excludedProductIds,
       excludedCollectionIds,
+      cashbackUsageMode,
+eligibleCollectionIds,
     },
   });
 
@@ -101,6 +131,8 @@ export const action = async ({ request }) => {
     cashbackPercentage,
     excludedProductIds,
     excludedCollectionIds,
+    cashbackUsageMode,
+eligibleCollectionIds,
   };
 };
 
@@ -123,6 +155,13 @@ export default function CashbackSettings() {
   const selectedCollection =
     fetcher.data?.excludedCollectionIds ??
     settings.excludedCollectionIds;
+const cashbackUsageMode =
+  fetcher.data?.cashbackUsageMode ??
+  settings.cashbackUsageMode;
+
+const eligibleCollection =
+  fetcher.data?.eligibleCollectionIds ??
+  settings.eligibleCollectionIds;
 
   return (
     <s-page heading="Cashback Settings">
@@ -220,6 +259,86 @@ export default function CashbackSettings() {
                 ))}
               </select>
             </div>
+<div
+  style={{
+    borderTop: "1px solid #d1d5db",
+    paddingTop: "20px",
+    marginTop: "10px",
+  }}
+>
+  <label
+    htmlFor="cashbackUsageMode"
+    style={{
+      display: "block",
+      marginBottom: "6px",
+      fontWeight: "600",
+    }}
+  >
+    Cashback Usage
+  </label>
+
+  <select
+    id="cashbackUsageMode"
+    name="cashbackUsageMode"
+    defaultValue={cashbackUsageMode}
+    style={{
+      width: "100%",
+      padding: "10px",
+      borderRadius: "8px",
+      border: "1px solid #8c9196",
+    }}
+  >
+    <option value="all">
+      Allow cashback on all products
+    </option>
+
+    <option value="collections">
+      Allow cashback only on selected collection
+    </option>
+  </select>
+
+  <div
+    style={{
+      marginTop: "16px",
+    }}
+  >
+    <label
+      htmlFor="eligibleCollectionIds"
+      style={{
+        display: "block",
+        marginBottom: "6px",
+        fontWeight: "600",
+      }}
+    >
+      Eligible Collection
+    </label>
+
+    <select
+      id="eligibleCollectionIds"
+      name="eligibleCollectionIds"
+      defaultValue={eligibleCollection}
+      style={{
+        width: "100%",
+        padding: "10px",
+        borderRadius: "8px",
+        border: "1px solid #8c9196",
+      }}
+    >
+      <option value="">
+        Select a collection where cashback can be used
+      </option>
+
+      {settings.collections.map((collection) => (
+        <option
+          key={collection.id}
+          value={collection.id}
+        >
+          {collection.title}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
 
             <s-button
               type="submit"
