@@ -19,8 +19,19 @@ export async function loader({ request }) {
   }
 
   try {
-    const { sessionToken } =
-      await authenticate.public.customerAccount(request);
+    let sessionToken;
+
+try {
+  const result =
+    await authenticate.public.customerAccount(request);
+
+  sessionToken = result.sessionToken;
+} catch (customerAccountError) {
+  const result =
+    await authenticate.public.checkout(request);
+
+  sessionToken = result.sessionToken;
+}
 
     console.log("Session token:", sessionToken);
 
