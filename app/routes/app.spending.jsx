@@ -30,12 +30,14 @@ const shop = await getOrCreateShop(
   const rule = await getSpendingRule(shop.id);
 
   return {
-    rule: {
-      enabled: rule.enabled,
-      threshold: rule.threshold,
-      mode: rule.mode,
-    },
-  };
+  currency: shop.currency || "USD",
+
+  rule: {
+    enabled: rule.enabled,
+    threshold: rule.threshold,
+    mode: rule.mode,
+  },
+};
 };
 
 export const action = async ({ request }) => {
