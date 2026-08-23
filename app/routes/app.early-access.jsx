@@ -1,16 +1,17 @@
-import { useLoaderData } from "react-router";
+import { useLoaderData, useActionData, Form } from "react-router";
 import { authenticate } from "../shopify.server";
 import { getOrCreateShop } from "../services/shop.server";
-import { getEarlyAccessEvents } from "../services/early-access.server";
+import {
+  createEarlyAccessEvent,
+  getEarlyAccessEvents,
+} from "../services/early-access.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
 
-  // Make sure this Shopify store exists in our database
   const shop = await getOrCreateShop(session.shop);
 
-  // Get products from Shopify
   const response = await admin.graphql(`
     query {
       products(first: 50) {
@@ -18,10 +19,6 @@ export const loader = async ({ request }) => {
           id
           title
           status
-          featuredImage {
-            url
-            altText
-          }
         }
       }
     }
@@ -31,7 +28,6 @@ export const loader = async ({ request }) => {
 
   const products = responseJson.data.products.nodes;
 
-  // Get existing Early Access events
   const events = await getEarlyAccessEvents(shop.id);
 
   return {
@@ -46,8 +42,43 @@ export const loader = async ({ request }) => {
   };
 };
 
+export const action = async ({ request }) => {
+  const { session } = await authenticate.admin(request);
+
+  const shop = await getOrCreateShop(session.shop);
+
+  const formData = await request.formData();
+
+  const shopifyProductId = formData.get("shopifyProductId");
+  const vipStartAt = formData.get("vipStartAt");
+  const publicReleaseAt = formData.get("publicReleaseAt");
+
+  const productTitle = formData.get("productTitle");
+
+  try {
+    await createEarlyAccessEvent({
+      shopId: shop.id,
+      shopifyProductId,
+      productTitleSnapshot: productTitle,
+      vipStartAt,
+      publicReleaseAt,
+    });
+
+    return {
+      success: true,
+      message: "Early Access event created successfully.",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error.message,
+    };
+  }
+};
+
 export default function EarlyAccessPage() {
   const { products, events } = useLoaderData();
+  const actionData = useActionData();
 
   return (
     <s-page heading="Early Access">
@@ -57,38 +88,59 @@ export default function EarlyAccessPage() {
           public can access it.
         </s-paragraph>
 
-        <s-stack direction="block" gap="base">
-          <s-text>
-            Available Products: {products.length}
-          </s-text>
+        {actionData?.message && (
+          <s-banner
+            tone={actionData.success ? "success" : "critical"}
+          >
+            {actionData.message}
+          </s-banner>
+        )}
 
-          {products.length === 0 ? (
-            <s-text>
-              No products found in this Shopify store.
-            </s-text>
-          ) : (
-            products.map((product) => (
-              <s-box
-                key={product.id}
-                padding="base"
-                borderWidth="base"
-                borderRadius="base"
-              >
-                <s-stack direction="block" gap="small">
-                  <s-heading>{product.title}</s-heading>
+        <Form method="post">
+          <s-stack direction="block" gap="base">
+            <s-select
+              label="Select Product"
+              name="shopifyProductId"
+              required
+            >
+              <option value="">Select a product</option>
 
-                  <s-text>
-                    Status: {product.status}
-                  </s-text>
+              {products.map((product) => (
+                <option
+                  key={product.id}
+                  value={product.id}
+                  data-title={product.title}
+                >
+                  {product.title}
+                </option>
+              ))}
+            </s-select>
 
-                  <s-text>
-                    Shopify Product ID: {product.id}
-                  </s-text>
-                </s-stack>
-              </s-box>
-            ))
-          )}
-        </s-stack>
+            <input
+              type="hidden"
+              name="productTitle"
+              value=""
+            />
+
+            <s-text-field
+              label="VIP Access Start"
+              name="vipStartAt"
+              type="datetime-local"
+              required
+            />
+
+            <s-text-field
+              label="Public Release"
+              name="publicReleaseAt"
+              type="datetime-local"
+              required
+            />
+
+            <s-button type="submit" variant="primary">
+              Create Early Access Event
+            </s-button>
+          </s-stack>
+        </Form>
       </s-section>
 
       <s-section heading="Existing Early Access Events">
@@ -107,16 +159,19 @@ export default function EarlyAccessPage() {
               >
                 <s-stack direction="block" gap="small">
                   <s-heading>
-                    {event.productTitleSnapshot || "Untitled Product"}
+                    {event.productTitleSnapshot || "Product"}
                   </s-heading>
 
                   <s-text>
-                    VIP Start: {new Date(event.vipStartAt).toLocaleString()}
+                    VIP Access:{" "}
+                    {new Date(event.vipStartAt).toLocaleString()}
                   </s-text>
 
                   <s-text>
                     Public Release:{" "}
-                    {new Date(event.publicReleaseAt).toLocaleString()}
+                    {new Date(
+                      event.publicReleaseAt,
+                    ).toLocaleString()}
                   </s-text>
 
                   <s-text>
