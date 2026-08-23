@@ -4,6 +4,15 @@ import db from "../db.server";
  * Calculate the current status of an Early Access event.
  */
 export function getEarlyAccessEventStatus(event, now = new Date()) {
+  // Permanently preserve manually controlled statuses.
+  if (event.status === "CANCELLED") {
+    return "CANCELLED";
+  }
+
+  if (event.status === "ARCHIVED") {
+    return "ARCHIVED";
+  }
+
   const vipStartAt = new Date(event.vipStartAt);
   const publicReleaseAt = new Date(event.publicReleaseAt);
 
@@ -61,7 +70,6 @@ export async function createEarlyAccessEvent({
     );
   }
 
-  // Check existing events for this same product.
   const existingEvents = await db.earlyAccessEvent.findMany({
     where: {
       shopId,
@@ -69,7 +77,6 @@ export async function createEarlyAccessEvent({
     },
   });
 
-  // Only block if an existing event is still UPCOMING or VIP_ACTIVE.
   const blockingEvent = existingEvents.find((event) => {
     const status = getEarlyAccessEventStatus(event);
 
@@ -89,12 +96,66 @@ export async function createEarlyAccessEvent({
       productTitleSnapshot: productTitleSnapshot || null,
       vipStartAt: vipStartDate,
       publicReleaseAt: publicReleaseDate,
+      status: "UPCOMING",
     },
   });
 
   return {
     ...event,
     status: getEarlyAccessEventStatus(event),
+  };
+}
+
+/**
+ * Cancel an Early Access event.
+ */
+export async function cancelEarlyAccessEvent({
+  shopId,
+  eventId,
+}) {
+  if (!shopId) {
+    throw new Error("Shop ID is required");
+  }
+
+  if (!eventId) {
+    throw new Error("Event ID is required");
+  }
+
+  const event = await db.earlyAccessEvent.findFirst({
+    where: {
+      id: Number(eventId),
+      shopId,
+    },
+  });
+
+  if (!event) {
+    throw new Error("Early Access event not found.");
+  }
+
+  const currentStatus = getEarlyAccessEventStatus(event);
+
+  if (currentStatus === "CANCELLED") {
+    throw new Error("This Early Access event is already cancelled.");
+  }
+
+  if (currentStatus === "COMPLETED") {
+    throw new Error(
+      "A completed Early Access event cannot be cancelled.",
+    );
+  }
+
+  const cancelledEvent = await db.earlyAccessEvent.update({
+    where: {
+      id: event.id,
+    },
+    data: {
+      status: "CANCELLED",
+    },
+  });
+
+  return {
+    ...cancelledEvent,
+    status: "CANCELLED",
   };
 }
 
