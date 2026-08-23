@@ -2,15 +2,6 @@ import db from "../db.server";
 
 /**
  * Calculate the current status of an Early Access event.
- *
- * UPCOMING:
- * Current time is before VIP access starts.
- *
- * VIP_ACTIVE:
- * VIP access has started, but public release has not started yet.
- *
- * COMPLETED:
- * Public release time has passed.
  */
 export function getEarlyAccessEventStatus(event, now = new Date()) {
   const vipStartAt = new Date(event.vipStartAt);
@@ -70,6 +61,27 @@ export async function createEarlyAccessEvent({
     );
   }
 
+  // Check existing events for this same product.
+  const existingEvents = await db.earlyAccessEvent.findMany({
+    where: {
+      shopId,
+      shopifyProductId: String(shopifyProductId),
+    },
+  });
+
+  // Only block if an existing event is still UPCOMING or VIP_ACTIVE.
+  const blockingEvent = existingEvents.find((event) => {
+    const status = getEarlyAccessEventStatus(event);
+
+    return status === "UPCOMING" || status === "VIP_ACTIVE";
+  });
+
+  if (blockingEvent) {
+    throw new Error(
+      "This product already has an active or upcoming Early Access event.",
+    );
+  }
+
   const event = await db.earlyAccessEvent.create({
     data: {
       shopId,
@@ -88,7 +100,6 @@ export async function createEarlyAccessEvent({
 
 /**
  * Get all Early Access events for a shop.
- *
  * Status is calculated dynamically based on current time.
  */
 export async function getEarlyAccessEvents(shopId) {
