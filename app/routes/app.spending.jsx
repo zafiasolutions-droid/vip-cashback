@@ -8,9 +8,24 @@ import {
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+ const { admin, session } = await authenticate.admin(request);
 
-  const shop = await getOrCreateShop(session.shop);
+const response = await admin.graphql(`
+  query {
+    shop {
+      currencyCode
+    }
+  }
+`);
+
+const data = await response.json();
+
+const currency = data.data.shop.currencyCode;
+
+const shop = await getOrCreateShop(
+  session.shop,
+  currency,
+);
 
   const rule = await getSpendingRule(shop.id);
 

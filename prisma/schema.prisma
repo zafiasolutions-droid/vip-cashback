@@ -76,6 +76,7 @@ model Shop {
   id        Int      @id @default(autoincrement())
   domain    String   @unique
   timezone  String?
+  currency  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
