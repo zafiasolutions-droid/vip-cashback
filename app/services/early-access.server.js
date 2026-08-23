@@ -1,6 +1,33 @@
 import db from "../db.server";
 
 /**
+ * Calculate the current status of an Early Access event.
+ *
+ * UPCOMING:
+ * Current time is before VIP access starts.
+ *
+ * VIP_ACTIVE:
+ * VIP access has started, but public release has not started yet.
+ *
+ * COMPLETED:
+ * Public release time has passed.
+ */
+export function getEarlyAccessEventStatus(event, now = new Date()) {
+  const vipStartAt = new Date(event.vipStartAt);
+  const publicReleaseAt = new Date(event.publicReleaseAt);
+
+  if (now < vipStartAt) {
+    return "UPCOMING";
+  }
+
+  if (now >= vipStartAt && now < publicReleaseAt) {
+    return "VIP_ACTIVE";
+  }
+
+  return "COMPLETED";
+}
+
+/**
  * Create a new Early Access event.
  */
 export async function createEarlyAccessEvent({
@@ -53,14 +80,19 @@ export async function createEarlyAccessEvent({
     },
   });
 
-  return event;
+  return {
+    ...event,
+    status: getEarlyAccessEventStatus(event),
+  };
 }
 
 /**
  * Get all Early Access events for a shop.
+ *
+ * Status is calculated dynamically based on current time.
  */
 export async function getEarlyAccessEvents(shopId) {
-  return db.earlyAccessEvent.findMany({
+  const events = await db.earlyAccessEvent.findMany({
     where: {
       shopId,
     },
@@ -68,4 +100,9 @@ export async function getEarlyAccessEvents(shopId) {
       publicReleaseAt: "asc",
     },
   });
+
+  return events.map((event) => ({
+    ...event,
+    status: getEarlyAccessEventStatus(event),
+  }));
 }
