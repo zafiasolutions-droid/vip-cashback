@@ -1,0 +1,309 @@
+// Prisma schema for VIP Early Access Shopify App
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+//
+// ENUMS
+//
+
+enum EarlyAccessStatus {
+  UPCOMING
+  VIP_ACTIVE
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+enum SpendingVipMode {
+  PERMANENT
+  DYNAMIC
+}
+
+enum EmailAutomationType {
+  EARLY_ACCESS
+  SPENDING_THRESHOLD
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum EmailTimingType {
+  AT_VIP_START
+  BEFORE_VIP_START
+  CUSTOM_TIME
+}
+
+//
+// SHOPIFY APP SESSION
+//
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires              DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName            String?
+  lastName             String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+//
+// SHOP
+//
+
+model Shop {
+  id        Int      @id @default(autoincrement())
+  domain    String   @unique
+  timezone  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customers          Customer[]
+  earlyAccessEvents  EarlyAccessEvent[]
+  spendingRule       SpendingRule?
+  twitchChannel      TwitchChannel?
+  emailAutomations   EmailAutomation[]
+  emailLogs          EmailLog[]
+}
+
+//
+// CUSTOMER
+//
+
+model Customer {
+  id                Int      @id @default(autoincrement())
+  shopId            Int
+  shopifyCustomerId String
+  email             String?
+  firstName         String?
+  lastName          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  shop              Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  manualVip         ManualVip?
+  spending          CustomerSpending?
+  twitchConnection  TwitchConnection?
+  emailLogs         EmailLog[]
+
+  @@unique([shopId, shopifyCustomerId])
+  @@index([shopId])
+}
+
+//
+// EARLY ACCESS EVENT
+//
+
+model EarlyAccessEvent {
+  id                   Int               @id @default(autoincrement())
+  shopId               Int
+
+  shopifyProductId     String
+  productTitleSnapshot String?
+
+  vipStartAt           DateTime
+  publicReleaseAt      DateTime
+
+  status               EarlyAccessStatus @default(UPCOMING)
+
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  shop                 Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  emailLogs            EmailLog[]
+
+  @@index([shopId])
+  @@index([shopifyProductId])
+  @@index([vipStartAt])
+  @@index([publicReleaseAt])
+}
+
+//
+// MANUAL VIP
+//
+
+model ManualVip {
+  id         Int      @id @default(autoincrement())
+  customerId Int      @unique
+  isActive   Boolean  @default(true)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+//
+// SPENDING VIP RULE
+//
+
+model SpendingRule {
+  id        Int             @id @default(autoincrement())
+  shopId    Int             @unique
+
+  enabled   Boolean         @default(false)
+
+  threshold Float           @default(0)
+
+  mode      SpendingVipMode @default(PERMANENT)
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  shop      Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+//
+// CUSTOMER SPENDING
+//
+
+model CustomerSpending {
+  id                 Int      @id @default(autoincrement())
+  customerId         Int      @unique
+
+  eligibleAmount     Float    @default(0)
+
+  vipUnlockedAt      DateTime?
+
+  lastCalculatedAt   DateTime?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  customer           Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+//
+// TWITCH CHANNEL
+//
+
+model TwitchChannel {
+  id               Int      @id @default(autoincrement())
+  shopId           Int      @unique
+
+  twitchUserId     String   @unique
+  login            String
+  displayName      String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  shop             Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+//
+// CUSTOMER TWITCH CONNECTION
+//
+
+model TwitchConnection {
+  id                 Int      @id @default(autoincrement())
+
+  customerId         Int      @unique
+
+  twitchUserId       String
+  login              String
+  displayName        String?
+
+  accessToken        String?
+  refreshToken       String?
+  tokenExpiresAt     DateTime?
+
+  isSubscriber       Boolean  @default(false)
+  lastVerifiedAt     DateTime?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  customer           Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([twitchUserId])
+}
+
+//
+// EMAIL AUTOMATION SETTINGS
+//
+
+model EmailAutomation {
+  id              Int                 @id @default(autoincrement())
+  shopId          Int
+
+  type            EmailAutomationType
+
+  enabled         Boolean             @default(false)
+
+  timingType      EmailTimingType?
+
+  // Used when timingType = BEFORE_VIP_START
+  // Example: 15 means 15 minutes before VIP access
+  timingValue     Int?
+
+  // Used when timingType = CUSTOM_TIME
+  customSendAt    DateTime?
+
+  subject         String
+  body            String
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  shop            Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, type])
+  @@index([shopId])
+}
+
+//
+// EMAIL HISTORY / DUPLICATE PREVENTION
+//
+
+model EmailLog {
+  id                   Int                 @id @default(autoincrement())
+
+  shopId               Int
+  customerId           Int
+
+  earlyAccessEventId   Int?
+
+  automationType       EmailAutomationType
+
+  status               EmailStatus         @default(PENDING)
+
+  sentAt               DateTime?
+
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  shop                 Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  customer             Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  earlyAccessEvent     EarlyAccessEvent?   @relation(fields: [earlyAccessEventId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([customerId])
+  @@index([earlyAccessEventId])
+
+  // Prevent duplicate email records for the same customer/event/type
+  @@unique([customerId, earlyAccessEventId, automationType])
+}
