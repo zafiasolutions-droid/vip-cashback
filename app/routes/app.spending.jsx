@@ -78,7 +78,7 @@ export const action = async ({ request }) => {
 };
 
 export default function SpendingPage() {
-  const { rule } = useLoaderData();
+  const { rule, currency } = useLoaderData();
   const actionData = useActionData();
 
   return (
@@ -113,8 +113,8 @@ export default function SpendingPage() {
 
           <div style={{ marginTop: "20px" }}>
             <label htmlFor="threshold">
-              Spending Threshold
-            </label>
+  Spending Threshold ({currency})
+</label>
 
             <br />
 
@@ -134,9 +134,9 @@ export default function SpendingPage() {
             />
 
             <p>
-              Example: Enter 500 to make customers VIP after
-              reaching $500 in eligible spending.
-            </p>
+  Example: Enter 500 to make customers VIP after
+  reaching 500 {currency} in eligible spending.
+</p>
           </div>
 
           <div style={{ marginTop: "20px" }}>
