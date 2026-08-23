@@ -107,7 +107,7 @@ model Customer {
   spending          CustomerSpending?
   twitchConnection  TwitchConnection?
   emailLogs         EmailLog[]
-
+ orderSpendingRecords OrderSpendingRecord[]
   @@unique([shopId, shopifyCustomerId])
   @@index([shopId])
 }
@@ -133,6 +133,7 @@ model EarlyAccessEvent {
 
   shop                 Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
   emailLogs            EmailLog[]
+  
 
   @@index([shopId])
   @@index([shopifyProductId])
@@ -194,7 +195,34 @@ model CustomerSpending {
 
   customer           Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 }
+//
+// ORDER SPENDING RECORD
+//
 
+model OrderSpendingRecord {
+  id             Int      @id @default(autoincrement())
+
+  shopId         Int
+  customerId     Int
+
+  shopifyOrderId String
+
+  eligibleAmount Float    @default(0)
+
+  currency       String?
+
+  financialStatus String?
+  cancelledAt     DateTime?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+    customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, shopifyOrderId])
+  @@index([shopId])
+  @@index([customerId])
+}
 //
 // TWITCH CHANNEL
 //
