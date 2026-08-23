@@ -18,7 +18,13 @@ export default function App() {
       <s-app-nav>
         <s-link href="/app">Home</s-link>
         <s-link href="/app/early-access">
-  Early Access
+          Early Access
+        </s-link>
+        <s-link href="/app/vip-customers">
+          VIP Customers
+        </s-link>
+        <s-link href="/app/spending">
+  Spending VIP
 </s-link>
       </s-app-nav>
       <Outlet />
