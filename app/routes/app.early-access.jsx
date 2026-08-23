@@ -49,11 +49,19 @@ export const action = async ({ request }) => {
 
   const formData = await request.formData();
 
-  const shopifyProductId = formData.get("shopifyProductId");
+  const selectedProduct = formData.get("product");
+
   const vipStartAt = formData.get("vipStartAt");
   const publicReleaseAt = formData.get("publicReleaseAt");
 
-  const productTitle = formData.get("productTitle");
+  if (!selectedProduct) {
+    return {
+      success: false,
+      message: "Please select a product.",
+    };
+  }
+
+  const [shopifyProductId, productTitle] = selectedProduct.split("|||");
 
   try {
     await createEarlyAccessEvent({
@@ -71,7 +79,7 @@ export const action = async ({ request }) => {
   } catch (error) {
     return {
       success: false,
-      message: error.message,
+      message: error.message || "Something went wrong.",
     };
   }
 };
@@ -97,49 +105,83 @@ export default function EarlyAccessPage() {
         )}
 
         <Form method="post">
-          <s-stack direction="block" gap="base">
-            <s-select
-              label="Select Product"
-              name="shopifyProductId"
+          <div style={{ marginTop: "20px" }}>
+            <label htmlFor="product">
+              Select Product
+            </label>
+
+            <br />
+
+            <select
+              id="product"
+              name="product"
               required
+              style={{
+                width: "100%",
+                padding: "10px",
+                marginTop: "8px",
+              }}
             >
-              <option value="">Select a product</option>
+              <option value="">
+                Select a product
+              </option>
 
               {products.map((product) => (
                 <option
                   key={product.id}
-                  value={product.id}
-                  data-title={product.title}
+                  value={`${product.id}|||${product.title}`}
                 >
                   {product.title}
                 </option>
               ))}
-            </s-select>
+            </select>
+          </div>
+
+          <div style={{ marginTop: "20px" }}>
+            <label htmlFor="vipStartAt">
+              VIP Access Start
+            </label>
+
+            <br />
 
             <input
-              type="hidden"
-              name="productTitle"
-              value=""
-            />
-
-            <s-text-field
-              label="VIP Access Start"
+              id="vipStartAt"
               name="vipStartAt"
               type="datetime-local"
               required
+              style={{
+                width: "100%",
+                padding: "10px",
+                marginTop: "8px",
+              }}
             />
+          </div>
 
-            <s-text-field
-              label="Public Release"
+          <div style={{ marginTop: "20px" }}>
+            <label htmlFor="publicReleaseAt">
+              Public Release
+            </label>
+
+            <br />
+
+            <input
+              id="publicReleaseAt"
               name="publicReleaseAt"
               type="datetime-local"
               required
+              style={{
+                width: "100%",
+                padding: "10px",
+                marginTop: "8px",
+              }}
             />
+          </div>
 
-            <s-button type="submit" variant="primary">
+          <div style={{ marginTop: "20px" }}>
+            <button type="submit">
               Create Early Access Event
-            </s-button>
-          </s-stack>
+            </button>
+          </div>
         </Form>
       </s-section>
 
@@ -169,9 +211,7 @@ export default function EarlyAccessPage() {
 
                   <s-text>
                     Public Release:{" "}
-                    {new Date(
-                      event.publicReleaseAt,
-                    ).toLocaleString()}
+                    {new Date(event.publicReleaseAt).toLocaleString()}
                   </s-text>
 
                   <s-text>
