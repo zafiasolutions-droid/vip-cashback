@@ -32,7 +32,7 @@ export const loader = async ({ request }) => {
 
         // No customer for now.
         // This tests guest access.
-        shopifyCustomerId: null,
+        shopifyCustomerId: "9734392119618",
       });
 
       return {
