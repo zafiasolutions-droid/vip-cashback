@@ -1,5 +1,60 @@
 import db from "../db.server";
+function convertStoreTimeToUtc(dateTime, timezone) {
+  const [datePart, timePart] = dateTime.split("T");
 
+  const [year, month, day] =
+    datePart.split("-").map(Number);
+
+  const [hour, minute] =
+    timePart.split(":").map(Number);
+
+  const utcGuess = new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      day,
+      hour,
+      minute,
+    ),
+  );
+
+  const formatter = new Intl.DateTimeFormat(
+    "en-US",
+    {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    },
+  );
+
+  const parts = formatter.formatToParts(utcGuess);
+
+  const values = {};
+
+  for (const part of parts) {
+    if (part.type !== "literal") {
+      values[part.type] = part.value;
+    }
+  }
+
+  const timezoneTime = Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    Number(values.hour),
+    Number(values.minute),
+  );
+
+  const offset = timezoneTime - utcGuess.getTime();
+
+  return new Date(
+    utcGuess.getTime() - offset,
+  );
+}
 /**
  * Calculate the current status of an Early Access event.
  */
@@ -36,6 +91,7 @@ export async function createEarlyAccessEvent({
   productTitleSnapshot,
   vipStartAt,
   publicReleaseAt,
+  timezone,
 }) {
   if (!shopId) {
     throw new Error("Shop ID is required");
@@ -53,8 +109,19 @@ export async function createEarlyAccessEvent({
     throw new Error("Public release time is required");
   }
 
-  const vipStartDate = new Date(vipStartAt);
-  const publicReleaseDate = new Date(publicReleaseAt);
+  if (!timezone) {
+    throw new Error("Shop timezone is required");
+  }
+
+  const vipStartDate = convertStoreTimeToUtc(
+  vipStartAt,
+  timezone,
+);
+
+const publicReleaseDate = convertStoreTimeToUtc(
+  publicReleaseAt,
+  timezone,
+);
 
   if (Number.isNaN(vipStartDate.getTime())) {
     throw new Error("Invalid VIP start time");

@@ -1,34 +1,50 @@
 import db from "../db.server";
 
 /**
- * Find an existing shop or create it if it does not exist.
- * Also stores the Shopify store currency when provided.
- *
- * @param {string} shopDomain Shopify shop domain
- * @param {string|null} currency Shopify store currency code
- * @returns {Promise<object>} Shop database record
- */
-export async function getOrCreateShop(shopDomain, currency = null) {
+
+* Find an existing shop or create it if it does not exist.
+* Also stores the Shopify store currency and timezone
+* when provided.
+*
+* @param {string} shopDomain Shopify shop domain
+* @param {string|null} currency Shopify store currency code
+* @param {string|null} timezone Shopify IANA timezone
+* @returns {Promise<object>} Shop database record
+  */
+  export async function getOrCreateShop(
+  shopDomain,
+  currency = null,
+  timezone = null,
+  ) {
   if (!shopDomain) {
-    throw new Error("Shop domain is required");
+  throw new Error("Shop domain is required");
   }
 
-  const shop = await db.shop.upsert({
-    where: {
-      domain: shopDomain,
-    },
+const updateData = {};
 
-    update: currency
-      ? {
-          currency,
-        }
-      : {},
+if (currency) {
+updateData.currency = currency;
+}
 
-    create: {
-      domain: shopDomain,
-      currency,
-    },
-  });
+if (timezone) {
+updateData.timezone = timezone;
+}
 
-  return shop;
+const shop = await db.shop.upsert({
+where: {
+domain: shopDomain,
+},
+
+update: updateData,
+
+create: {
+  domain: shopDomain,
+  currency,
+  timezone,
+},
+
+
+});
+
+return shop;
 }

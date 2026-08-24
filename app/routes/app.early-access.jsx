@@ -10,28 +10,45 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
 
-  const shop = await getOrCreateShop(session.shop);
-
   const response = await admin.graphql(`
-    query {
-      products(first: 50) {
-        nodes {
-          id
-          title
-          status
-        }
+  query {
+    shop {
+      ianaTimezone
+      currencyCode
+    }
+
+    products(first: 50) {
+      nodes {
+        id
+        title
+        status
       }
     }
-  `);
+  }
+`);
 
   const responseJson = await response.json();
 
-  const products = responseJson.data.products.nodes;
+  const storeTimezone =
+    responseJson.data.shop.ianaTimezone;
+
+  const storeCurrency =
+    responseJson.data.shop.currencyCode;
+
+  const shop = await getOrCreateShop(
+    session.shop,
+    storeCurrency,
+    storeTimezone,
+  );
+
+  const products =
+    responseJson.data.products.nodes;
 
   const events = await getEarlyAccessEvents(shop.id);
 
   return {
     products,
+    timezone: shop.timezone,
     events: events.map((event) => ({
       ...event,
       vipStartAt: event.vipStartAt.toISOString(),
@@ -70,6 +87,7 @@ export const action = async ({ request }) => {
       productTitleSnapshot: productTitle,
       vipStartAt,
       publicReleaseAt,
+      timezone: shop.timezone,
     });
 
     return {
@@ -85,7 +103,7 @@ export const action = async ({ request }) => {
 };
 
 export default function EarlyAccessPage() {
-  const { products, events } = useLoaderData();
+  const { products, events, timezone } = useLoaderData();
   const actionData = useActionData();
 
   return (
@@ -206,12 +224,26 @@ export default function EarlyAccessPage() {
 
                   <s-text>
                     VIP Access:{" "}
-                    {new Date(event.vipStartAt).toLocaleString()}
+                    {new Intl.DateTimeFormat(
+                      "en-US",
+                      {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                        timeZone: timezone || "UTC",
+                      },
+                    ).format(new Date(event.vipStartAt))}
                   </s-text>
 
                   <s-text>
                     Public Release:{" "}
-                    {new Date(event.publicReleaseAt).toLocaleString()}
+                    {new Intl.DateTimeFormat(
+                      "en-US",
+                      {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                        timeZone: timezone || "UTC",
+                      },
+                    ).format(new Date(event.publicReleaseAt))}
                   </s-text>
 
                   <s-text>
