@@ -152,6 +152,12 @@ export async function isCustomerVip({
     shopId,
     shopifyCustomerId,
   });
-
+console.log("VIP STATUS CHECK", {
+  shopifyCustomerId,
+  manualVip,
+  spendingVip,
+  twitchVip,
+  reasons,
+});
   return status.isVip;
 }
