@@ -1,0 +1,32 @@
+
+{% if product %}
+  <div id="vip-product-lock-{{ product.id }}">
+    <div id="vip-lock-message-{{ product.id }}" style="display: none;">
+      <h3>VIP Early Access</h3>
+      <p>
+        This product is currently available exclusively to VIP customers.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async function () {
+      const productId = "{{ product.id }}";
+
+      console.log("VIP Product Lock loaded for product:", productId);
+    });
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "VIP Product Lock",
+  "target": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Displays VIP Early Access protection on product pages."
+    }
+  ]
+}
+{% endschema %}
