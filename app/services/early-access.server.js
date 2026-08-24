@@ -178,3 +178,80 @@ export async function getEarlyAccessEvents(shopId) {
     status: getEarlyAccessEventStatus(event),
   }));
 }
+
+/**
+ * Check whether a customer can access an Early Access product.
+ */
+export async function checkEarlyAccessEligibility({
+  shopId,
+  shopifyProductId,
+  shopifyCustomerId,
+}) {
+  if (!shopId) {
+    throw new Error("Shop ID is required");
+  }
+
+  if (!shopifyProductId) {
+    throw new Error("Shopify product ID is required");
+  }
+
+  const event = await db.earlyAccessEvent.findFirst({
+    where: {
+      shopId,
+      shopifyProductId: String(shopifyProductId),
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  // No Early Access event means the product is public.
+  if (!event) {
+    return {
+      allowed: true,
+      reason: "NO_EARLY_ACCESS_EVENT",
+    };
+  }
+
+  const status = getEarlyAccessEventStatus(event);
+
+  // Product is not currently restricted.
+  if (
+    status === "UPCOMING" ||
+    status === "COMPLETED" ||
+    status === "CANCELLED" ||
+    status === "ARCHIVED"
+  ) {
+    return {
+      allowed: true,
+      reason: status,
+      event,
+    };
+  }
+
+  // During VIP_ACTIVE, a logged-in customer must be VIP.
+  if (!shopifyCustomerId) {
+    return {
+      allowed: false,
+      reason: "VIP_CUSTOMER_REQUIRED",
+      event,
+    };
+  }
+
+  const { isCustomerVip } = await import(
+    "./vip-status.server"
+  );
+
+  const isVip = await isCustomerVip({
+    shopId,
+    shopifyCustomerId,
+  });
+
+  return {
+    allowed: isVip,
+    reason: isVip
+      ? "VIP_ACCESS_GRANTED"
+      : "VIP_ACCESS_REQUIRED",
+    event,
+  };
+}
