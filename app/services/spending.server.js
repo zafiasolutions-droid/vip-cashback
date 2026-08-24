@@ -183,7 +183,7 @@ export async function evaluateCustomerSpendingVip({
 
   if (!rule.enabled) {
     return {
-      qualifies: false,
+      isVip: false,
       reason: "SPENDING_VIP_DISABLED",
     };
   }
@@ -215,7 +215,7 @@ export async function evaluateCustomerSpendingVip({
 
   if (rule.mode === "PERMANENT") {
     return {
-      qualifies:
+      isVip:
         currentlyQualifies ||
         Boolean(spending.vipUnlockedAt),
       mode: "PERMANENT",
@@ -225,9 +225,9 @@ export async function evaluateCustomerSpendingVip({
   }
 
   return {
-    qualifies: currentlyQualifies,
-    mode: "DYNAMIC",
-    threshold: rule.threshold,
-    eligibleAmount: spending.eligibleAmount,
-  };
+  isVip: currentlyQualifies,
+  mode: "DYNAMIC",
+  threshold: rule.threshold,
+  eligibleAmount: spending.eligibleAmount,
+};
 }
