@@ -119,14 +119,8 @@ export async function getCustomerVipStatus({
     reasons.push("TWITCH");
   }
 
-console.log("VIP STATUS CHECK", {
-  shopifyCustomerId,
-  manualVip,
-  spendingVip,
-  twitchVip,
-  reasons,
-});
 
+  
   return {
     isVip: reasons.length > 0,
 
