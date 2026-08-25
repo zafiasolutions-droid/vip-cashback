@@ -1,8 +1,12 @@
 
 {% if product %}
   <div id="vip-product-lock-{{ product.id }}">
-    <div id="vip-lock-message-{{ product.id }}" style="display: none;">
+    <div
+      id="vip-lock-message-{{ product.id }}"
+      style="display: none;"
+    >
       <h3>VIP Early Access</h3>
+
       <p>
         This product is currently available exclusively to VIP customers.
       </p>
@@ -13,7 +17,47 @@
     document.addEventListener("DOMContentLoaded", async function () {
       const productId = "{{ product.id }}";
 
-      console.log("VIP Product Lock loaded for product:", productId);
+      const lockContainer =
+        document.getElementById(
+          "vip-product-lock-{{ product.id }}"
+        );
+
+      const lockMessage =
+        document.getElementById(
+          "vip-lock-message-{{ product.id }}"
+        );
+
+      try {
+        const response = await fetch(
+          `/apps/vip-access?product_id=${productId}`
+        );
+
+        const result = await response.json();
+
+        console.log(
+          "VIP Access Result:",
+          result
+        );
+
+        if (!result.allowed) {
+          lockMessage.style.display = "block";
+
+          // Hide product purchase buttons.
+          const addToCartButtons =
+            document.querySelectorAll(
+              'button[type="submit"][name="add"]'
+            );
+
+          addToCartButtons.forEach((button) => {
+            button.style.display = "none";
+          });
+        }
+      } catch (error) {
+        console.error(
+          "VIP Access check failed:",
+          error
+        );
+      }
     });
   </script>
 {% endif %}
@@ -25,7 +69,7 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Displays VIP Early Access protection on product pages."
+      "content": "Restricts VIP Early Access products to eligible customers."
     }
   ]
 }
