@@ -47,12 +47,6 @@ function isManualVip(customer) {
 
 /**
  * Get the complete VIP status of a customer.
- *
- * A customer is VIP if ANY active VIP source qualifies:
- *
- * - Manual VIP
- * - Spending VIP
- * - Twitch Subscriber VIP
  */
 export async function getCustomerVipStatus({
   shopId,
@@ -63,34 +57,45 @@ export async function getCustomerVipStatus({
   }
 
   if (!shopifyCustomerId) {
-    throw new Error("Shopify customer ID is required");
+    throw new Error(
+      "Shopify customer ID is required",
+    );
   }
 
-  const [customer, spendingRule] = await Promise.all([
-    db.customer.findUnique({
-      where: {
-        shopId_shopifyCustomerId: {
-          shopId,
-          shopifyCustomerId: String(shopifyCustomerId),
+  const [customer, spendingRule] =
+    await Promise.all([
+      db.customer.findUnique({
+        where: {
+          shopId_shopifyCustomerId: {
+            shopId,
+            shopifyCustomerId:
+              String(shopifyCustomerId),
+          },
         },
-      },
 
-      include: {
-        manualVip: true,
-        spending: true,
-        twitchConnection: true,
-      },
-    }),
+        include: {
+          manualVip: true,
+          spending: true,
+          twitchConnection: true,
+        },
+      }),
 
-    db.spendingRule.findUnique({
-      where: {
-        shopId,
-      },
-    }),
-  ]);
+      db.spendingRule.findUnique({
+        where: {
+          shopId,
+        },
+      }),
+    ]);
 
-  // Customer does not exist in our local database yet.
+  // IMPORTANT DEBUG:
+  // Customer does not exist in our local database.
   if (!customer) {
+    console.log("VIP CUSTOMER NOT FOUND", {
+      shopId,
+      shopifyCustomerId:
+        String(shopifyCustomerId),
+    });
+
     return {
       isVip: false,
       reasons: [],
@@ -99,10 +104,12 @@ export async function getCustomerVipStatus({
   }
 
   const manualVip = isManualVip(customer);
+
   const spendingVip = isSpendingVip(
     customer,
     spendingRule,
   );
+
   const twitchVip = isTwitchVip(customer);
 
   const reasons = [];
@@ -119,8 +126,24 @@ export async function getCustomerVipStatus({
     reasons.push("TWITCH");
   }
 
+  // IMPORTANT DEBUG:
+  console.log("VIP STATUS CHECK", {
+    shopId,
+    shopifyCustomerId:
+      String(shopifyCustomerId),
 
-  
+    localCustomerId: customer.id,
+
+    storedShopifyCustomerId:
+      customer.shopifyCustomerId,
+
+    manualVip,
+    spendingVip,
+    twitchVip,
+
+    reasons,
+  });
+
   return {
     isVip: reasons.length > 0,
 
@@ -128,10 +151,14 @@ export async function getCustomerVipStatus({
 
     customer: {
       id: customer.id,
+
       shopifyCustomerId:
         customer.shopifyCustomerId,
+
       email: customer.email,
+
       firstName: customer.firstName,
+
       lastName: customer.lastName,
     },
 
