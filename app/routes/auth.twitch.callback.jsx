@@ -1,7 +1,10 @@
+import db from "../db.server";
+
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
 
   const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
 
   if (error) {
@@ -17,17 +20,23 @@ export const loader = async ({ request }) => {
         success: false,
         error: "Missing authorization code",
       },
+      { status: 400 },
+    );
+  }
+
+  if (!state) {
+    return Response.json(
       {
-        status: 400,
+        success: false,
+        error: "Missing customer ID",
       },
+      { status: 400 },
     );
   }
 
   const clientId = process.env.TWITCH_CLIENT_ID;
-  const clientSecret =
-    process.env.TWITCH_CLIENT_SECRET;
-  const redirectUri =
-    process.env.TWITCH_REDIRECT_URI;
+  const clientSecret = process.env.TWITCH_CLIENT_SECRET;
+  const redirectUri = process.env.TWITCH_REDIRECT_URI;
 
   if (
     !clientId ||
@@ -40,7 +49,7 @@ export const loader = async ({ request }) => {
   }
 
   try {
-    // Exchange authorization code for tokens.
+    // Exchange authorization code for Twitch tokens.
     const tokenResponse = await fetch(
       "https://id.twitch.tv/oauth2/token",
       {
@@ -76,9 +85,7 @@ export const loader = async ({ request }) => {
           error:
             "Failed to get Twitch access token",
         },
-        {
-          status: 500,
-        },
+        { status: 500 },
       );
     }
 
@@ -89,7 +96,6 @@ export const loader = async ({ request }) => {
         headers: {
           Authorization:
             `Bearer ${tokenData.access_token}`,
-
           "Client-Id": clientId,
         },
       },
@@ -110,9 +116,7 @@ export const loader = async ({ request }) => {
           error:
             "Failed to get Twitch user information",
         },
-        {
-          status: 500,
-        },
+        { status: 500 },
       );
     }
 
@@ -124,20 +128,132 @@ export const loader = async ({ request }) => {
           success: false,
           error: "Twitch user not found",
         },
-        {
-          status: 404,
-        },
+        { status: 404 },
       );
     }
 
+    // `state` is the local database Customer ID
+    // for this temporary testing flow.
+    const customerId = Number(state);
+
+    if (
+      !Number.isInteger(customerId) ||
+      customerId <= 0
+    ) {
+      return Response.json(
+        {
+          success: false,
+          error: "Invalid customer ID",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Confirm the customer exists.
+    const customer =
+      await db.customer.findUnique({
+        where: {
+          id: customerId,
+        },
+      });
+
+    if (!customer) {
+      return Response.json(
+        {
+          success: false,
+          error: "Customer not found",
+        },
+        { status: 404 },
+      );
+    }
+
+    // One Twitch account can only be linked
+    // to one Shopify customer.
+    const existingTwitchConnection =
+      await db.twitchConnection.findUnique({
+        where: {
+          twitchUserId: String(twitchUser.id),
+        },
+      });
+
+    if (
+      existingTwitchConnection &&
+      existingTwitchConnection.customerId !==
+        customer.id
+    ) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            "This Twitch account is already linked to another customer",
+        },
+        { status: 409 },
+      );
+    }
+
+    // Create or update the Twitch connection.
+    const connection =
+      await db.twitchConnection.upsert({
+        where: {
+          customerId: customer.id,
+        },
+
+        update: {
+          twitchUserId: String(twitchUser.id),
+          login: twitchUser.login,
+          displayName:
+            twitchUser.display_name || null,
+          accessToken:
+            tokenData.access_token,
+          refreshToken:
+            tokenData.refresh_token || null,
+          tokenExpiresAt:
+            tokenData.expires_in
+              ? new Date(
+                  Date.now() +
+                    tokenData.expires_in * 1000,
+                )
+              : null,
+          lastVerifiedAt: new Date(),
+        },
+
+        create: {
+          customerId: customer.id,
+          twitchUserId: String(twitchUser.id),
+          login: twitchUser.login,
+          displayName:
+            twitchUser.display_name || null,
+          accessToken:
+            tokenData.access_token,
+          refreshToken:
+            tokenData.refresh_token || null,
+          tokenExpiresAt:
+            tokenData.expires_in
+              ? new Date(
+                  Date.now() +
+                    tokenData.expires_in * 1000,
+                )
+              : null,
+          lastVerifiedAt: new Date(),
+        },
+      });
+
     return Response.json({
       success: true,
+      message:
+        "Twitch account linked successfully",
+
+      customer: {
+        id: customer.id,
+        shopifyCustomerId:
+          customer.shopifyCustomerId,
+      },
 
       twitchUser: {
-        id: twitchUser.id,
-        login: twitchUser.login,
-        displayName: twitchUser.display_name,
-        email: twitchUser.email || null,
+        id: connection.twitchUserId,
+        login: connection.login,
+        displayName:
+          connection.displayName,
       },
     });
   } catch (error) {
@@ -151,9 +267,7 @@ export const loader = async ({ request }) => {
         success: false,
         error: "Twitch OAuth failed",
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 };
