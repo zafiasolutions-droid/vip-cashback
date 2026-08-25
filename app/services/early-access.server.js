@@ -1,4 +1,24 @@
 import db from "../db.server";
+
+/**
+ * Normalize Shopify Product IDs.
+ *
+ * Supports:
+ * - 123456789
+ * - gid://shopify/Product/123456789
+ */
+function normalizeShopifyProductId(productId) {
+  if (!productId) {
+    return null;
+  }
+
+  const value = String(productId);
+
+  const match = value.match(/(\d+)$/);
+
+  return match ? match[1] : value;
+}
+
 function convertStoreTimeToUtc(dateTime, timezone) {
   const [datePart, timePart] = dateTime.split("T");
 
@@ -55,11 +75,14 @@ function convertStoreTimeToUtc(dateTime, timezone) {
     utcGuess.getTime() - offset,
   );
 }
+
 /**
  * Calculate the current status of an Early Access event.
  */
-export function getEarlyAccessEventStatus(event, now = new Date()) {
-  // Permanently preserve manually controlled statuses.
+export function getEarlyAccessEventStatus(
+  event,
+  now = new Date(),
+) {
   if (event.status === "CANCELLED") {
     return "CANCELLED";
   }
@@ -69,13 +92,18 @@ export function getEarlyAccessEventStatus(event, now = new Date()) {
   }
 
   const vipStartAt = new Date(event.vipStartAt);
-  const publicReleaseAt = new Date(event.publicReleaseAt);
+  const publicReleaseAt = new Date(
+    event.publicReleaseAt,
+  );
 
   if (now < vipStartAt) {
     return "UPCOMING";
   }
 
-  if (now >= vipStartAt && now < publicReleaseAt) {
+  if (
+    now >= vipStartAt &&
+    now < publicReleaseAt
+  ) {
     return "VIP_ACTIVE";
   }
 
@@ -102,33 +130,53 @@ export async function createEarlyAccessEvent({
   }
 
   if (!vipStartAt) {
-    throw new Error("VIP start time is required");
+    throw new Error(
+      "VIP start time is required",
+    );
   }
 
   if (!publicReleaseAt) {
-    throw new Error("Public release time is required");
+    throw new Error(
+      "Public release time is required",
+    );
   }
 
   if (!timezone) {
-    throw new Error("Shop timezone is required");
+    throw new Error(
+      "Shop timezone is required",
+    );
   }
+
+  const normalizedProductId =
+    normalizeShopifyProductId(shopifyProductId);
 
   const vipStartDate = convertStoreTimeToUtc(
-  vipStartAt,
-  timezone,
-);
+    vipStartAt,
+    timezone,
+  );
 
-const publicReleaseDate = convertStoreTimeToUtc(
-  publicReleaseAt,
-  timezone,
-);
+  const publicReleaseDate =
+    convertStoreTimeToUtc(
+      publicReleaseAt,
+      timezone,
+    );
 
-  if (Number.isNaN(vipStartDate.getTime())) {
-    throw new Error("Invalid VIP start time");
+  if (
+    Number.isNaN(vipStartDate.getTime())
+  ) {
+    throw new Error(
+      "Invalid VIP start time",
+    );
   }
 
-  if (Number.isNaN(publicReleaseDate.getTime())) {
-    throw new Error("Invalid public release time");
+  if (
+    Number.isNaN(
+      publicReleaseDate.getTime(),
+    )
+  ) {
+    throw new Error(
+      "Invalid public release time",
+    );
   }
 
   if (vipStartDate >= publicReleaseDate) {
@@ -137,18 +185,33 @@ const publicReleaseDate = convertStoreTimeToUtc(
     );
   }
 
-  const existingEvents = await db.earlyAccessEvent.findMany({
-    where: {
-      shopId,
-      shopifyProductId: String(shopifyProductId),
-    },
-  });
+  // Get all events and compare normalized IDs.
+  const existingEvents =
+    await db.earlyAccessEvent.findMany({
+      where: {
+        shopId,
+      },
+    });
 
-  const blockingEvent = existingEvents.find((event) => {
-    const status = getEarlyAccessEventStatus(event);
+  const matchingEvents =
+    existingEvents.filter((event) => {
+      return (
+        normalizeShopifyProductId(
+          event.shopifyProductId,
+        ) === normalizedProductId
+      );
+    });
 
-    return status === "UPCOMING" || status === "VIP_ACTIVE";
-  });
+  const blockingEvent =
+    matchingEvents.find((event) => {
+      const status =
+        getEarlyAccessEventStatus(event);
+
+      return (
+        status === "UPCOMING" ||
+        status === "VIP_ACTIVE"
+      );
+    });
 
   if (blockingEvent) {
     throw new Error(
@@ -156,20 +219,25 @@ const publicReleaseDate = convertStoreTimeToUtc(
     );
   }
 
-  const event = await db.earlyAccessEvent.create({
-    data: {
-      shopId,
-      shopifyProductId: String(shopifyProductId),
-      productTitleSnapshot: productTitleSnapshot || null,
-      vipStartAt: vipStartDate,
-      publicReleaseAt: publicReleaseDate,
-      status: "UPCOMING",
-    },
-  });
+  const event =
+    await db.earlyAccessEvent.create({
+      data: {
+        shopId,
+        shopifyProductId:
+          normalizedProductId,
+        productTitleSnapshot:
+          productTitleSnapshot || null,
+        vipStartAt: vipStartDate,
+        publicReleaseAt:
+          publicReleaseDate,
+        status: "UPCOMING",
+      },
+    });
 
   return {
     ...event,
-    status: getEarlyAccessEventStatus(event),
+    status:
+      getEarlyAccessEventStatus(event),
   };
 }
 
@@ -188,21 +256,27 @@ export async function cancelEarlyAccessEvent({
     throw new Error("Event ID is required");
   }
 
-  const event = await db.earlyAccessEvent.findFirst({
-    where: {
-      id: Number(eventId),
-      shopId,
-    },
-  });
+  const event =
+    await db.earlyAccessEvent.findFirst({
+      where: {
+        id: Number(eventId),
+        shopId,
+      },
+    });
 
   if (!event) {
-    throw new Error("Early Access event not found.");
+    throw new Error(
+      "Early Access event not found.",
+    );
   }
 
-  const currentStatus = getEarlyAccessEventStatus(event);
+  const currentStatus =
+    getEarlyAccessEventStatus(event);
 
   if (currentStatus === "CANCELLED") {
-    throw new Error("This Early Access event is already cancelled.");
+    throw new Error(
+      "This Early Access event is already cancelled.",
+    );
   }
 
   if (currentStatus === "COMPLETED") {
@@ -211,14 +285,15 @@ export async function cancelEarlyAccessEvent({
     );
   }
 
-  const cancelledEvent = await db.earlyAccessEvent.update({
-    where: {
-      id: event.id,
-    },
-    data: {
-      status: "CANCELLED",
-    },
-  });
+  const cancelledEvent =
+    await db.earlyAccessEvent.update({
+      where: {
+        id: event.id,
+      },
+      data: {
+        status: "CANCELLED",
+      },
+    });
 
   return {
     ...cancelledEvent,
@@ -228,26 +303,30 @@ export async function cancelEarlyAccessEvent({
 
 /**
  * Get all Early Access events for a shop.
- * Status is calculated dynamically based on current time.
  */
-export async function getEarlyAccessEvents(shopId) {
-  const events = await db.earlyAccessEvent.findMany({
-    where: {
-      shopId,
-    },
-    orderBy: {
-      publicReleaseAt: "asc",
-    },
-  });
+export async function getEarlyAccessEvents(
+  shopId,
+) {
+  const events =
+    await db.earlyAccessEvent.findMany({
+      where: {
+        shopId,
+      },
+      orderBy: {
+        publicReleaseAt: "asc",
+      },
+    });
 
   return events.map((event) => ({
     ...event,
-    status: getEarlyAccessEventStatus(event),
+    status:
+      getEarlyAccessEventStatus(event),
   }));
 }
 
 /**
- * Check whether a customer can access an Early Access product.
+ * Check whether a customer can access
+ * an Early Access product.
  */
 export async function checkEarlyAccessEligibility({
   shopId,
@@ -259,20 +338,62 @@ export async function checkEarlyAccessEligibility({
   }
 
   if (!shopifyProductId) {
-    throw new Error("Shopify product ID is required");
+    throw new Error(
+      "Shopify product ID is required",
+    );
   }
 
-  const event = await db.earlyAccessEvent.findFirst({
-    where: {
-      shopId,
-      shopifyProductId: String(shopifyProductId),
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+  const normalizedProductId =
+    normalizeShopifyProductId(
+      shopifyProductId,
+    );
+
+  // Get shop events first, then compare normalized IDs.
+  const events =
+    await db.earlyAccessEvent.findMany({
+      where: {
+        shopId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+  const event = events.find(
+    (item) =>
+      normalizeShopifyProductId(
+        item.shopifyProductId,
+      ) === normalizedProductId,
+  );
+
+  // DEBUG LOG
+  console.log("EARLY ACCESS CHECK", {
+    shopId,
+    receivedProductId: shopifyProductId,
+    normalizedProductId,
+    availableEvents: events.map((item) => ({
+      id: item.id,
+      title: item.productTitleSnapshot,
+      productId: item.shopifyProductId,
+      normalizedId:
+        normalizeShopifyProductId(
+          item.shopifyProductId,
+        ),
+      status:
+        getEarlyAccessEventStatus(item),
+    })),
+    matchedEvent: event
+      ? {
+          id: event.id,
+          title: event.productTitleSnapshot,
+          productId:
+            event.shopifyProductId,
+        }
+      : null,
   });
 
-  // No Early Access event means the product is public.
+  // No Early Access event means
+  // the product is public.
   if (!event) {
     return {
       allowed: true,
@@ -280,9 +401,9 @@ export async function checkEarlyAccessEligibility({
     };
   }
 
-  const status = getEarlyAccessEventStatus(event);
+  const status =
+    getEarlyAccessEventStatus(event);
 
-  // Product is not currently restricted.
   if (
     status === "UPCOMING" ||
     status === "COMPLETED" ||
@@ -296,7 +417,8 @@ export async function checkEarlyAccessEligibility({
     };
   }
 
-  // During VIP_ACTIVE, a logged-in customer must be VIP.
+  // VIP_ACTIVE:
+  // Customer must be logged in.
   if (!shopifyCustomerId) {
     return {
       allowed: false,
@@ -305,9 +427,8 @@ export async function checkEarlyAccessEligibility({
     };
   }
 
-  const { isCustomerVip } = await import(
-    "./vip-status.server"
-  );
+  const { isCustomerVip } =
+    await import("./vip-status.server");
 
   const isVip = await isCustomerVip({
     shopId,
