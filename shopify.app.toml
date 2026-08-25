@@ -51,6 +51,11 @@ scopes = "read_orders,read_products,write_products,read_customers"
 [auth]
 redirect_urls = ["https://vip-cashback.onrender.com/api/auth"]
 
+[app_proxy]
+url = "/apps/vip-access"
+subpath = "vip-access"
+prefix = "apps"
+
 [product.metafields.app.demo_info]
 type = "single_line_text_field"
 name = "Demo Source Info"
