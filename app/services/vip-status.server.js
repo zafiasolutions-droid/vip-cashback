@@ -62,31 +62,28 @@ export async function getCustomerVipStatus({
     );
   }
 
-  const [customer, spendingRule] =
-    await Promise.all([
-      db.customer.findUnique({
-        where: {
-          shopId_shopifyCustomerId: {
-            shopId,
-            shopifyCustomerId:
-              String(shopifyCustomerId),
-          },
-        },
+ const [customer, spendingRule] = await Promise.all([
+  db.customer.findFirst({
+    where: {
+      shopId,
+      shopifyCustomerId: {
+        endsWith: String(shopifyCustomerId),
+      },
+    },
 
-        include: {
-          manualVip: true,
-          spending: true,
-          twitchConnection: true,
-        },
-      }),
+    include: {
+      manualVip: true,
+      spending: true,
+      twitchConnection: true,
+    },
+  }),
 
-      db.spendingRule.findUnique({
-        where: {
-          shopId,
-        },
-      }),
-    ]);
-
+  db.spendingRule.findUnique({
+    where: {
+      shopId,
+    },
+  }),
+]);
   // IMPORTANT DEBUG:
   // Customer does not exist in our local database.
   if (!customer) {
