@@ -29,6 +29,12 @@ export const loader = async ({ request }) => {
     const shopifyCustomerId =
       url.searchParams.get("logged_in_customer_id");
 
+console.log("VIP Access Debug:", {
+  productId,
+  shopifyCustomerId,
+  url: request.url,
+});
+
     const result =
       await checkEarlyAccessEligibility({
         shopId: shop.id,
