@@ -1,6 +1,10 @@
 import { authenticate } from "../shopify.server.js";
 import { getOrCreateShop } from "../services/shop.server.js";
 import db from "../db.server.js";
+import {
+  createEarlyAccessEvent,
+} from "../services/early-access.server.js";
+
 
 function normalizeShopifyId(id) {
   if (!id) {
@@ -158,6 +162,54 @@ export const action = async ({ request }) => {
           matchedCollection.title,
       },
     );
+
+const now = new Date();
+
+const vipStartAt = new Date(
+  now.getTime(),
+);
+
+const publicReleaseAt = new Date(
+  now.getTime() + 10 * 60 * 1000,
+);
+
+try {
+  const earlyAccessEvent =
+    await createEarlyAccessEvent({
+      shopId: localShop.id,
+      shopifyProductId: product.id,
+      productTitleSnapshot: product.title,
+      vipStartAt: vipStartAt.toISOString(),
+      publicReleaseAt:
+        publicReleaseAt.toISOString(),
+      timezone: "UTC",
+    });
+
+  console.log(
+    "EARLY ACCESS EVENT CREATED",
+    {
+      eventId: earlyAccessEvent.id,
+      productId:
+        earlyAccessEvent.shopifyProductId,
+      productTitle:
+        earlyAccessEvent.productTitleSnapshot,
+      vipStartAt:
+        earlyAccessEvent.vipStartAt,
+      publicReleaseAt:
+        earlyAccessEvent.publicReleaseAt,
+      status:
+        earlyAccessEvent.status,
+    },
+  );
+} catch (error) {
+  console.log(
+    "EARLY ACCESS EVENT NOT CREATED",
+    {
+      productId: product.id,
+      reason: error.message,
+    },
+  );
+}
 
     return new Response("OK", {
       status: 200,
