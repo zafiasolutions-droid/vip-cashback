@@ -1,27 +1,21 @@
-import { verifyTwitchSubscriber } from "../services/twitch-verification.server";
+import db from "../db.server";
 
 export const loader = async () => {
-  try {
-    const result = await verifyTwitchSubscriber({
-      customerId: 1,
-      shopId: 1,
+  const customer = await db.customer.findUnique({
+    where: {
+      id: 1,
+    },
+  });
+
+  const twitchConnection =
+    await db.twitchConnection.findUnique({
+      where: {
+        customerId: 1,
+      },
     });
 
-    return Response.json({
-      success: true,
-      ...result,
-    });
-  } catch (error) {
-    console.error("Twitch verification test error:", error);
-
-    return Response.json(
-      {
-        success: false,
-        error: error.message,
-      },
-      {
-        status: 500,
-      },
-    );
-  }
+  return Response.json({
+    customer,
+    twitchConnection,
+  });
 };
