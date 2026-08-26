@@ -109,6 +109,10 @@ export async function getCustomerVipStatus({
     spendingRule,
   );
 
+  console.log("TWITCH CONNECTION DEBUG", {
+  customerId: customer.id,
+  twitchConnection: customer.twitchConnection,
+});
 const twitchVip = isTwitchVip(customer);
 
   const reasons = [];
