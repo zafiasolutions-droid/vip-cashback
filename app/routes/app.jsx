@@ -26,6 +26,9 @@ export default function App() {
         <s-link href="/app/spending">
   Spending VIP
 </s-link>
+<s-link href="/app/twitch">
+  Twitch
+</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>
