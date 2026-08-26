@@ -75,18 +75,23 @@ export const loader = async () => {
     }
 
     return Response.json({
-      success: true,
+  success: true,
 
-      isVip: reasons.length > 0,
+  isVip: reasons.length > 0,
 
-      reasons,
+  reasons,
 
-      sources: {
-        manual: manualVip,
-        spending: spendingVip,
-        twitch: twitchVip,
-      },
-    });
+  sources: {
+    manual: manualVip,
+    spending: spendingVip,
+    twitch: twitchVip,
+  },
+
+  debug: {
+    spendingRule,
+    customerSpending: customer.spending,
+  },
+});
   } catch (error) {
     console.error("VIP status debug error:", error);
 
