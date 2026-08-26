@@ -1,45 +1,33 @@
-import db from "../db.server";
+
+import {
+  getCustomerVipStatus,
+} from "../services/vip-status.server.js";
 
 export const loader = async () => {
   try {
-    const customer = await db.customer.findFirst({
-      where: {
+    const vipStatus =
+      await getCustomerVipStatus({
         shopId: 1,
-        shopifyCustomerId: "9734410338626",
-      },
-      include: {
-        manualVip: true,
-        spending: true,
-        twitchConnection: true,
-      },
-    });
-
-    if (!customer) {
-      return Response.json({
-        success: false,
-        error: "Customer not found",
+        shopifyCustomerId:
+          "9734410338626",
       });
-    }
-
-    const twitchVip =
-      customer.twitchConnection?.isSubscriber === true;
 
     return Response.json({
       success: true,
-      isVip: twitchVip,
-      reasons: twitchVip ? ["TWITCH"] : [],
-      sources: {
-        manual: false,
-        spending: false,
-        twitch: twitchVip,
-      },
-      debug: {
-        twitchConnection:
-          customer.twitchConnection,
-      },
+
+      isVip: vipStatus.isVip,
+
+      reasons: vipStatus.reasons,
+
+      sources: vipStatus.sources,
+
+      customer: vipStatus.customer,
     });
   } catch (error) {
-    console.error("VIP debug error:", error);
+    console.error(
+      "VIP status debug error:",
+      error,
+    );
 
     return Response.json(
       {
