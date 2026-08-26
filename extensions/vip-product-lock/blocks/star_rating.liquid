@@ -43,14 +43,19 @@
           lockMessage.style.display = "block";
 
           // Hide product purchase buttons.
-          const addToCartButtons =
-            document.querySelectorAll(
-              'button[type="submit"][name="add"]'
-            );
+          const purchaseButtons =
+  document.querySelectorAll(
+    [
+      'button[type="submit"][name="add"]',
+      '.shopify-payment-button',
+      '.shopify-payment-button__button',
+      '[data-shopify="payment-button"]',
+    ].join(","),
+  );
 
-          addToCartButtons.forEach((button) => {
-            button.style.display = "none";
-          });
+purchaseButtons.forEach((element) => {
+  element.style.display = "none";
+});
         }
       } catch (error) {
         console.error(
