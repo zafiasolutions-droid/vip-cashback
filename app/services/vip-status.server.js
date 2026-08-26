@@ -109,17 +109,7 @@ export async function getCustomerVipStatus({
     spendingRule,
   );
 
-let twitchVip = false;
-
-if (customer.twitchConnection) {
-  const twitchResult =
-    await verifyTwitchSubscriber({
-      customerId: customer.id,
-      shopId,
-    });
-
-  twitchVip = twitchResult.isVip;
-}
+const twitchVip = isTwitchVip(customer);
 
   const reasons = [];
 
