@@ -194,49 +194,43 @@ export const loader = async ({ request }) => {
     // Create or update the Twitch connection.
     const connection =
       await db.twitchConnection.upsert({
-        where: {
-          customerId: customer.id,
-        },
+  where: {
+    customerId,
+  },
 
-        update: {
-          twitchUserId: String(twitchUser.id),
-          login: twitchUser.login,
-          displayName:
-            twitchUser.display_name || null,
-          accessToken:
-            tokenData.access_token,
-          refreshToken:
-            tokenData.refresh_token || null,
-          tokenExpiresAt:
-            tokenData.expires_in
-              ? new Date(
-                  Date.now() +
-                    tokenData.expires_in * 1000,
-                )
-              : null,
-          lastVerifiedAt: new Date(),
-        },
+  update: {
+    twitchUserId: String(twitchUser.id),
+    login: twitchUser.login,
+    displayName: twitchUser.display_name,
 
-        create: {
-          customerId: customer.id,
-          twitchUserId: String(twitchUser.id),
-          login: twitchUser.login,
-          displayName:
-            twitchUser.display_name || null,
-          accessToken:
-            tokenData.access_token,
-          refreshToken:
-            tokenData.refresh_token || null,
-          tokenExpiresAt:
-            tokenData.expires_in
-              ? new Date(
-                  Date.now() +
-                    tokenData.expires_in * 1000,
-                )
-              : null,
-          lastVerifiedAt: new Date(),
-        },
-      });
+    accessToken: tokenData.access_token,
+    refreshToken: tokenData.refresh_token || null,
+
+    tokenExpiresAt: tokenData.expires_in
+      ? new Date(
+          Date.now() +
+            tokenData.expires_in * 1000,
+        )
+      : null,
+  },
+
+  create: {
+    customerId,
+    twitchUserId: String(twitchUser.id),
+    login: twitchUser.login,
+    displayName: twitchUser.display_name,
+
+    accessToken: tokenData.access_token,
+    refreshToken: tokenData.refresh_token || null,
+
+    tokenExpiresAt: tokenData.expires_in
+      ? new Date(
+          Date.now() +
+            tokenData.expires_in * 1000,
+        )
+      : null,
+  },
+});
 
     return Response.json({
       success: true,

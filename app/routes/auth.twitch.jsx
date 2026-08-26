@@ -24,8 +24,9 @@ export const loader = async ({ request }) => {
   }
 
   const scopes = [
-    "user:read:email",
-  ].join(" ");
+  "user:read:email",
+  "user:read:subscriptions",
+].join(" ");
 
   // For the moment, use state to carry the
   // Shopify customer ID to the callback.
