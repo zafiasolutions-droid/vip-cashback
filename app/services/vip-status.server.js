@@ -1,4 +1,6 @@
+import { verifyTwitchSubscriber } from "./twitch-verification.server";
 import db from "../db.server";
+
 
 /**
  * Check whether a customer currently qualifies as a Spending VIP.
@@ -107,7 +109,17 @@ export async function getCustomerVipStatus({
     spendingRule,
   );
 
-  const twitchVip = isTwitchVip(customer);
+let twitchVip = false;
+
+if (customer.twitchConnection) {
+  const twitchResult =
+    await verifyTwitchSubscriber({
+      customerId: customer.id,
+      shopId,
+    });
+
+  twitchVip = twitchResult.isVip;
+}
 
   const reasons = [];
 

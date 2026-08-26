@@ -1,10 +1,12 @@
-import { verifyTwitchSubscriber } from "../services/twitch-verification.server";
+import {
+  getCustomerVipStatus,
+} from "../services/vip-status.server";
 
 export const loader = async () => {
   try {
-    const result = await verifyTwitchSubscriber({
-      customerId: 1,
+    const result = await getCustomerVipStatus({
       shopId: 1,
+      shopifyCustomerId: "9734410338626",
     });
 
     return Response.json({
@@ -12,10 +14,7 @@ export const loader = async () => {
       ...result,
     });
   } catch (error) {
-    console.error(
-      "Twitch verification test error:",
-      error,
-    );
+    console.error("VIP status test error:", error);
 
     return Response.json(
       {
