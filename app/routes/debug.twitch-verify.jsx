@@ -1,20 +1,30 @@
-import {
-  getCustomerVipStatus,
-} from "../services/vip-status.server";
+import db from "../db.server";
 
 export const loader = async () => {
   try {
-    const result = await getCustomerVipStatus({
-      shopId: 1,
-      shopifyCustomerId: "9734410338626",
-    });
+    const connection =
+      await db.twitchConnection.update({
+        where: {
+          customerId: 1,
+        },
+
+        data: {
+          isSubscriber: true,
+          lastVerifiedAt: new Date(),
+        },
+      });
 
     return Response.json({
       success: true,
-      ...result,
+      message:
+        "Twitch subscriber test enabled",
+      connection,
     });
   } catch (error) {
-    console.error("VIP status test error:", error);
+    console.error(
+      "Twitch subscriber test error:",
+      error,
+    );
 
     return Response.json(
       {
