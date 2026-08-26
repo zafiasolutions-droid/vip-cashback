@@ -4,23 +4,30 @@ export const loader = async () => {
   try {
     const customerId = 1;
 
-    const customer =
-      await db.customer.findUnique({
+    const spending =
+      await db.customerSpending.upsert({
         where: {
-          id: customerId,
+          customerId,
         },
-        include: {
-          spending: true,
+
+        update: {
+          eligibleAmount: 807.9,
+          vipUnlockedAt: new Date(),
+          lastCalculatedAt: new Date(),
+        },
+
+        create: {
+          customerId,
+          eligibleAmount: 807.9,
+          vipUnlockedAt: new Date(),
+          lastCalculatedAt: new Date(),
         },
       });
 
-    const spendingRule =
-      await db.spendingRule.findFirst();
-
     return Response.json({
       success: true,
-      customer,
-      spendingRule,
+      message: "Customer spending test data saved",
+      spending,
     });
   } catch (error) {
     console.error("Spending VIP debug error:", error);
