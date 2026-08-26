@@ -1,5 +1,5 @@
 import db from "../db.server";
-
+import { verifyTwitchSubscriber } from "../services/twitch-verification.server";
 export const loader = async ({ request }) => {
   const url = new URL(request.url);
 
@@ -232,6 +232,12 @@ export const loader = async ({ request }) => {
   },
 });
 
+const verification =
+  await verifyTwitchSubscriber({
+    customerId: customer.id,
+    shopId: customer.shopId,
+  });
+
     return Response.json({
       success: true,
       message:
@@ -249,6 +255,7 @@ export const loader = async ({ request }) => {
         displayName:
           connection.displayName,
       },
+        verification,
     });
   } catch (error) {
     console.error(
