@@ -36,6 +36,10 @@ topics = ["app/scopes_update"]
 uri = "/webhooks/app/uninstalled"
 topics = ["app/uninstalled"]
 
+[[webhooks.subscriptions]]
+topics = ["products/create", "products/update"]
+uri = "/webhooks/products"
+
 [events]
 api_version = "unstable"
 
