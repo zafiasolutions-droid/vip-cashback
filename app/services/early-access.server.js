@@ -1,4 +1,5 @@
-import db from "../db.server";
+import db from "../db.server.js";
+import { isCustomerVip } from "./vip-status.server.js";
 
 /**
  * Normalize Shopify Product IDs.
@@ -427,13 +428,10 @@ export async function checkEarlyAccessEligibility({
     };
   }
 
-  const { isCustomerVip } =
-    await import("./vip-status.server");
-
   const isVip = await isCustomerVip({
-    shopId,
-    shopifyCustomerId,
-  });
+  shopId,
+  shopifyCustomerId,
+});
 
   return {
     allowed: isVip,
