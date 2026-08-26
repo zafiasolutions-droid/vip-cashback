@@ -89,6 +89,12 @@ export async function getCustomerVipStatus({
       }),
     ]);
 
+console.log("VIP SPENDING DEBUG", {
+  customerId: customer?.id,
+  spending: customer?.spending,
+  spendingRule,
+});
+
   if (!customer) {
     return {
       isVip: false,
