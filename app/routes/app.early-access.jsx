@@ -1,138 +1,177 @@
-import { useLoaderData, useActionData, Form } from "react-router";
-import { authenticate } from "../shopify.server";
-import { getOrCreateShop } from "../services/shop.server";
+
+
 import {
-  createEarlyAccessEvent,
-  getEarlyAccessEvents,
-} from "../services/early-access.server";
+  useLoaderData,
+  useActionData,
+  Form,
+} from "react-router";
+
+import { authenticate } from "../shopify.server";
+
+import { getOrCreateShop } from "../services/shop.server";
+
+import db from "../db.server";
+
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 export const loader = async ({ request }) => {
-  const { admin, session } = await authenticate.admin(request);
+  const { admin, session } =
+    await authenticate.admin(request);
 
-  const response = await admin.graphql(`
-  query {
-    shop {
-      ianaTimezone
-      currencyCode
-    }
-
-    products(first: 50) {
-      nodes {
-        id
-        title
-        status
+  const response =
+    await admin.graphql(`
+      query {
+        collections(first: 100) {
+          nodes {
+            id
+            title
+          }
+        }
       }
-    }
-  }
-`);
+    `);
 
-  const responseJson = await response.json();
+  const responseJson =
+    await response.json();
 
-  const storeTimezone =
-    responseJson.data.shop.ianaTimezone;
+  const collections =
+    responseJson.data.collections.nodes;
 
-  const storeCurrency =
-    responseJson.data.shop.currencyCode;
+  const shop =
+    await getOrCreateShop(session.shop);
 
-  const shop = await getOrCreateShop(
-    session.shop,
-    storeCurrency,
-    storeTimezone,
-  );
-
-  const products =
-    responseJson.data.products.nodes;
-
-  const events = await getEarlyAccessEvents(shop.id);
+  const selectedCollections =
+    await db.earlyAccessCollection.findMany({
+      where: {
+        shopId: shop.id,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
   return {
-    products,
-    timezone: shop.timezone,
-    events: events.map((event) => ({
-      ...event,
-      vipStartAt: event.vipStartAt.toISOString(),
-      publicReleaseAt: event.publicReleaseAt.toISOString(),
-      createdAt: event.createdAt.toISOString(),
-      updatedAt: event.updatedAt.toISOString(),
-    })),
+    collections,
+    selectedCollections,
   };
 };
 
 export const action = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session } =
+    await authenticate.admin(request);
 
-  const shop = await getOrCreateShop(session.shop);
+  const shop =
+    await getOrCreateShop(session.shop);
 
-  const formData = await request.formData();
+  const formData =
+    await request.formData();
 
-  const selectedProduct = formData.get("product");
+  const selectedCollection =
+    formData.get("collection");
 
-  const vipStartAt = formData.get("vipStartAt");
-  const publicReleaseAt = formData.get("publicReleaseAt");
-
-  if (!selectedProduct) {
+  if (!selectedCollection) {
     return {
       success: false,
-      message: "Please select a product.",
+      message: "Please select a collection.",
     };
   }
 
-  const [shopifyProductId, productTitle] = selectedProduct.split("|||");
+  const [
+    shopifyCollectionId,
+    collectionTitle,
+  ] = selectedCollection.split("|||");
 
   try {
-    await createEarlyAccessEvent({
-      shopId: shop.id,
-      shopifyProductId,
-      productTitleSnapshot: productTitle,
-      vipStartAt,
-      publicReleaseAt,
-      timezone: shop.timezone,
+    await db.earlyAccessCollection.upsert({
+      where: {
+        shopId_shopifyCollectionId: {
+          shopId: shop.id,
+          shopifyCollectionId,
+        },
+      },
+
+      update: {
+        titleSnapshot: collectionTitle,
+        enabled: true,
+      },
+
+      create: {
+        shopId: shop.id,
+        shopifyCollectionId,
+        titleSnapshot: collectionTitle,
+        enabled: true,
+      },
     });
 
     return {
       success: true,
-      message: "Early Access event created successfully.",
+      message:
+        "VIP Early Access collection saved successfully.",
     };
   } catch (error) {
+    console.error(
+      "Early Access collection error:",
+      error,
+    );
+
     return {
       success: false,
-      message: error.message || "Something went wrong.",
+      message:
+        error.message ||
+        "Something went wrong.",
     };
   }
 };
 
 export default function EarlyAccessPage() {
-  const { products, events, timezone } = useLoaderData();
-  const actionData = useActionData();
+  const {
+    collections,
+    selectedCollections,
+  } = useLoaderData();
+
+  const actionData =
+    useActionData();
 
   return (
-    <s-page heading="Early Access">
-      <s-section heading="Create Early Access Event">
+    <s-page heading="VIP Early Access">
+
+      <s-section heading="Select VIP Collection">
+
         <s-paragraph>
-          Select a product and configure when VIP customers and the
-          public can access it.
+          Select a collection for VIP Early Access.
+          When a new product is added to this collection,
+          VIP customers will automatically receive
+          Early Access before the product becomes public.
         </s-paragraph>
 
         {actionData?.message && (
           <s-banner
-            tone={actionData.success ? "success" : "critical"}
+            tone={
+              actionData.success
+                ? "success"
+                : "critical"
+            }
           >
             {actionData.message}
           </s-banner>
         )}
 
         <Form method="post">
-          <div style={{ marginTop: "20px" }}>
-            <label htmlFor="product">
-              Select Product
+
+          <div
+            style={{
+              marginTop: "20px",
+            }}
+          >
+
+            <label htmlFor="collection">
+              Select Collection
             </label>
 
             <br />
 
             <select
-              id="product"
-              name="product"
+              id="collection"
+              name="collection"
               required
               style={{
                 width: "100%",
@@ -140,121 +179,95 @@ export default function EarlyAccessPage() {
                 marginTop: "8px",
               }}
             >
+
               <option value="">
-                Select a product
+                Select a collection
               </option>
 
-              {products.map((product) => (
-                <option
-                  key={product.id}
-                  value={`${product.id}|||${product.title}`}
-                >
-                  {product.title}
-                </option>
-              ))}
+              {collections.map(
+                (collection) => (
+                  <option
+                    key={collection.id}
+                    value={`${collection.id}|||${collection.title}`}
+                  >
+                    {collection.title}
+                  </option>
+                ),
+              )}
+
             </select>
+
           </div>
 
-          <div style={{ marginTop: "20px" }}>
-            <label htmlFor="vipStartAt">
-              VIP Access Start
-            </label>
-
-            <br />
-
-            <input
-              id="vipStartAt"
-              name="vipStartAt"
-              type="datetime-local"
-              required
-              style={{
-                width: "100%",
-                padding: "10px",
-                marginTop: "8px",
-              }}
-            />
-          </div>
-
-          <div style={{ marginTop: "20px" }}>
-            <label htmlFor="publicReleaseAt">
-              Public Release
-            </label>
-
-            <br />
-
-            <input
-              id="publicReleaseAt"
-              name="publicReleaseAt"
-              type="datetime-local"
-              required
-              style={{
-                width: "100%",
-                padding: "10px",
-                marginTop: "8px",
-              }}
-            />
-          </div>
-
-          <div style={{ marginTop: "20px" }}>
+          <div
+            style={{
+              marginTop: "20px",
+            }}
+          >
             <button type="submit">
-              Create Early Access Event
+              Enable VIP Early Access
             </button>
           </div>
+
         </Form>
+
       </s-section>
 
-      <s-section heading="Existing Early Access Events">
-        {events.length === 0 ? (
+      <s-section heading="VIP Early Access Collections">
+
+        {selectedCollections.length === 0 ? (
+
           <s-paragraph>
-            No Early Access events have been created yet.
+            No VIP Early Access collections selected yet.
           </s-paragraph>
+
         ) : (
-          <s-stack direction="block" gap="base">
-            {events.map((event) => (
-              <s-box
-                key={event.id}
-                padding="base"
-                borderWidth="base"
-                borderRadius="base"
-              >
-                <s-stack direction="block" gap="small">
-                  <s-heading>
-                    {event.productTitleSnapshot || "Product"}
-                  </s-heading>
 
-                  <s-text>
-                    VIP Access:{" "}
-                    {new Intl.DateTimeFormat(
-                      "en-US",
-                      {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                        timeZone: timezone || "UTC",
-                      },
-                    ).format(new Date(event.vipStartAt))}
-                  </s-text>
+          <s-stack
+            direction="block"
+            gap="base"
+          >
 
-                  <s-text>
-                    Public Release:{" "}
-                    {new Intl.DateTimeFormat(
-                      "en-US",
-                      {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                        timeZone: timezone || "UTC",
-                      },
-                    ).format(new Date(event.publicReleaseAt))}
-                  </s-text>
+            {selectedCollections.map(
+              (collection) => (
 
-                  <s-text>
-                    Status: {event.status}
-                  </s-text>
-                </s-stack>
-              </s-box>
-            ))}
+                <s-box
+                  key={collection.id}
+                  padding="base"
+                  borderWidth="base"
+                  borderRadius="base"
+                >
+
+                  <s-stack
+                    direction="block"
+                    gap="small"
+                  >
+
+                    <s-heading>
+                      {collection.titleSnapshot ||
+                        "Collection"}
+                    </s-heading>
+
+                    <s-text>
+                      Status:{" "}
+                      {collection.enabled
+                        ? "ACTIVE"
+                        : "DISABLED"}
+                    </s-text>
+
+                  </s-stack>
+
+                </s-box>
+
+              ),
+            )}
+
           </s-stack>
+
         )}
+
       </s-section>
+
     </s-page>
   );
 }

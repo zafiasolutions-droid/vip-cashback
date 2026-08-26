@@ -82,6 +82,7 @@ model Shop {
 
   customers          Customer[]
   earlyAccessEvents  EarlyAccessEvent[]
+  earlyAccessCollections EarlyAccessCollection[]
   spendingRule       SpendingRule?
   twitchChannel      TwitchChannel?
   emailAutomations   EmailAutomation[]
@@ -112,6 +113,31 @@ model Customer {
   @@index([shopId])
 }
 
+//
+// VIP EARLY ACCESS COLLECTION
+//
+
+model EarlyAccessCollection {
+  id                   Int      @id @default(autoincrement())
+
+  shopId               Int
+
+  shopifyCollectionId  String
+
+  titleSnapshot        String?
+
+  enabled              Boolean  @default(true)
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  shop                Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, shopifyCollectionId])
+
+  @@index([shopId])
+  @@index([shopifyCollectionId])
+}
 //
 // EARLY ACCESS EVENT
 //
