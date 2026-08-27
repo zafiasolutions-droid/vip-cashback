@@ -134,20 +134,43 @@ export const loader = async ({ request }) => {
 
     // `state` is the local database Customer ID
     // for this temporary testing flow.
-    const customerId = Number(state);
+    let stateData;
 
-    if (
-      !Number.isInteger(customerId) ||
-      customerId <= 0
-    ) {
-      return Response.json(
-        {
-          success: false,
-          error: "Invalid customer ID",
-        },
-        { status: 400 },
-      );
-    }
+try {
+  stateData = JSON.parse(
+    Buffer.from(
+      state,
+      "base64url",
+    ).toString("utf8"),
+  );
+} catch (error) {
+  return Response.json(
+    {
+      success: false,
+      error: "Invalid authorization state",
+    },
+    { status: 400 },
+  );
+}
+
+const customerId =
+  Number(stateData.customerId);
+
+const returnTo =
+  stateData.returnTo || "/";
+
+if (
+  !Number.isInteger(customerId) ||
+  customerId <= 0
+) {
+  return Response.json(
+    {
+      success: false,
+      error: "Invalid customer ID",
+    },
+    { status: 400 },
+  );
+}
 
     // Confirm the customer exists.
     const customer =
@@ -238,25 +261,25 @@ const verification =
     shopId: customer.shopId,
   });
 
-    return Response.json({
-      success: true,
-      message:
-        "Twitch account linked successfully",
+    const redirectUrl = new URL(
+  returnTo,
+);
 
-      customer: {
-        id: customer.id,
-        shopifyCustomerId:
-          customer.shopifyCustomerId,
-      },
+redirectUrl.searchParams.set(
+  "twitch_connected",
+  "true",
+);
 
-      twitchUser: {
-        id: connection.twitchUserId,
-        login: connection.login,
-        displayName:
-          connection.displayName,
-      },
-        verification,
-    });
+redirectUrl.searchParams.set(
+  "vip_verified",
+  verification.isSubscriber
+    ? "true"
+    : "false",
+);
+
+return Response.redirect(
+  redirectUrl.toString(),
+);
   } catch (error) {
     console.error(
       "Twitch OAuth callback error:",

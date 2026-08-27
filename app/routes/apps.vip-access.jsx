@@ -94,6 +94,11 @@ return Response.json({
   status,
   publicReleaseAt,
   remainingSeconds,
+
+  shopifyCustomerId:
+    shopifyCustomerId || null,
+
+  shop: shopDomain,
 });
 
   } catch (error) {

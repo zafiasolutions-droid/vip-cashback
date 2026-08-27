@@ -300,7 +300,13 @@
                   window.location.href;
 
                 window.location.href =
-                  `/apps/vip-access/twitch/connect?return_to=${encodeURIComponent(returnTo)}`;
+  `/apps/vip-access/twitch/auth?customer_id=${encodeURIComponent(
+    result.shopifyCustomerId,
+  )}&shop=${encodeURIComponent(
+    result.shop,
+  )}&return_to=${encodeURIComponent(
+    returnTo,
+  )}`;
               },
             );
           }
