@@ -52,16 +52,37 @@ export const loader = async ({ request }) => {
           shopifyCustomerId || null,
       });
 
-    return Response.json({
-      allowed: result.allowed,
-      reason: result.reason,
+    const status = result.event
+  ? getEarlyAccessEventStatus(
+      result.event,
+    )
+  : null;
 
-      status: result.event
-        ? getEarlyAccessEventStatus(
-            result.event,
-          )
-        : null,
-    });
+const publicReleaseAt =
+  result.event?.publicReleaseAt
+    ? result.event.publicReleaseAt.toISOString()
+    : null;
+
+const remainingSeconds =
+  publicReleaseAt && status === "VIP_ACTIVE"
+    ? Math.max(
+        0,
+        Math.floor(
+          (new Date(publicReleaseAt).getTime() -
+            Date.now()) /
+            1000,
+        ),
+      )
+    : 0;
+
+return Response.json({
+  allowed: result.allowed,
+  reason: result.reason,
+  status,
+  publicReleaseAt,
+  remainingSeconds,
+});
+
   } catch (error) {
     console.error(
       "VIP Access App Proxy Error:",
