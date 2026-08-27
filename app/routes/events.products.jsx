@@ -79,6 +79,7 @@ export const action = async ({ request }) => {
       " product(id: $id) {" +
       " id" +
       " title" +
+      " handle" +
       " collections(first: 100) {" +
       " nodes {" +
       " id" +
@@ -179,6 +180,7 @@ try {
       shopId: localShop.id,
       shopifyProductId: product.id,
       productTitleSnapshot: product.title,
+      productHandle: product.handle,
       vipStartAt: vipStartAt.toISOString(),
       publicReleaseAt:
         publicReleaseAt.toISOString(),

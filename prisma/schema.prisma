@@ -148,7 +148,7 @@ model EarlyAccessEvent {
 
   shopifyProductId     String
   productTitleSnapshot String?
-
+  productHandle        String?
   vipStartAt           DateTime
   publicReleaseAt      DateTime
 

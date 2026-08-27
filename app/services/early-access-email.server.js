@@ -59,6 +59,16 @@ export async function sendEarlyAccessEmails({
       ? spendingRule.threshold
       : Number.MAX_SAFE_INTEGER;
 
+const shop =
+  await db.shop.findUnique({
+    where: {
+      id: shopId,
+    },
+  });
+
+const productUrl =
+  `https://${shop.domain}/products/${earlyAccessEvent.productHandle}`;
+
   const customers =
     await getVipCustomers(
       shopId,
@@ -186,15 +196,17 @@ export async function sendEarlyAccessEmails({
                 NOW AVAILABLE FOR VIP MEMBERS
               </div>
 
-              <div style="
-                font-size: 22px;
-                font-weight: bold;
-                color: #111111;
-              ">
-                ${earlyAccessEvent.productTitleSnapshot}
-              </div>
-            </div>
-
+              <a
+  href="${productUrl}"
+  style="
+    font-size: 22px;
+    font-weight: bold;
+    color: #111111;
+    text-decoration: none;
+  "
+>
+  ${earlyAccessEvent.productTitleSnapshot}
+</a>
             <p style="
               font-size: 16px;
               line-height: 1.7;

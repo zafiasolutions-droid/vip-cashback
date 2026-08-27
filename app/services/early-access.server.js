@@ -121,6 +121,7 @@ export async function createEarlyAccessEvent({
   shopId,
   shopifyProductId,
   productTitleSnapshot,
+  productHandle,
   vipStartAt,
   publicReleaseAt,
   timezone,
@@ -230,6 +231,8 @@ export async function createEarlyAccessEvent({
           normalizedProductId,
         productTitleSnapshot:
           productTitleSnapshot || null,
+          productHandle:
+  productHandle || null,
         vipStartAt: vipStartDate,
         publicReleaseAt:
           publicReleaseDate,
@@ -256,6 +259,7 @@ export async function createAutomaticEarlyAccessEvent({
   shopId,
   shopifyProductId,
   productTitleSnapshot,
+  productHandle,
 }) {
   if (!shopId) {
     throw new Error("Shop ID is required");
@@ -344,6 +348,8 @@ export async function createAutomaticEarlyAccessEvent({
         productTitleSnapshot:
           productTitleSnapshot || null,
 
+          productHandle:
+  productHandle || null,
         vipStartAt,
 
         publicReleaseAt,
