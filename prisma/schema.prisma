@@ -77,6 +77,7 @@ model Shop {
   domain    String   @unique
   timezone  String?
   currency  String?
+  emailAutomationSettings EmailAutomationSettings?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -87,6 +88,7 @@ model Shop {
   twitchChannel      TwitchChannel?
   emailAutomations   EmailAutomation[]
   emailLogs          EmailLog[]
+  
 }
 
 //
@@ -362,3 +364,15 @@ model EmailLog {
   // Prevent duplicate email records for the same customer/event/type
   @@unique([customerId, earlyAccessEventId, automationType])
 }
+
+model EmailAutomationSettings {
+  id                 Int      @id @default(autoincrement())
+  shopId             Int      @unique
+  earlyAccessEnabled Boolean  @default(true)
+  earlyAccessSubject String   @default("VIP Early Access: {{product}} is live")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  shop               Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+

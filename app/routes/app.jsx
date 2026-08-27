@@ -21,13 +21,16 @@ export default function App() {
           Early Access
         </s-link>
         <s-link href="/app/vip-customers">
-          VIP Customers
+          Manual Customers
         </s-link>
         <s-link href="/app/spending">
   Spending VIP
 </s-link>
 <s-link href="/app/twitch">
   Twitch
+</s-link>
+<s-link href="/app/email-automation">
+  Email Automation
 </s-link>
       </s-app-nav>
       <Outlet />
