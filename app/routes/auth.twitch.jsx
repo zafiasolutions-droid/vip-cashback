@@ -58,25 +58,35 @@ export const loader = async ({ request }) => {
     );
   }
 
-  const customer =
-    await db.customer.findUnique({
-      where: {
-        shopId_shopifyCustomerId: {
-          shopId: shop.id,
-          shopifyCustomerId:
-            String(shopifyCustomerId),
-        },
+  let customer =
+  await db.customer.findUnique({
+    where: {
+      shopId_shopifyCustomerId: {
+        shopId: shop.id,
+        shopifyCustomerId:
+          String(shopifyCustomerId),
+      },
+    },
+  });
+
+if (!customer) {
+  customer =
+    await db.customer.create({
+      data: {
+        shopId: shop.id,
+        shopifyCustomerId:
+          String(shopifyCustomerId),
       },
     });
 
-  if (!customer) {
-    return new Response(
-      "Customer not found in the VIP system.",
-      {
-        status: 404,
-      },
-    );
-  }
+  console.log(
+    "NEW CUSTOMER CREATED FOR TWITCH LINKING",
+    {
+      customerId: customer.id,
+      shopifyCustomerId,
+    },
+  );
+}
 
   const stateData = {
     customerId: customer.id,
