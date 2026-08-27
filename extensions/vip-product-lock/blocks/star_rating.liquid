@@ -1,34 +1,178 @@
-
 {% if product %}
   <div id="vip-product-lock-{{ product.id }}">
     <div
       id="vip-lock-message-{{ product.id }}"
+      class="vip-lock-card"
       style="display: none;"
     >
-      <h3>VIP Early Access</h3>
+      <div class="vip-lock-badge">
+        VIP EXCLUSIVE
+      </div>
 
-      <p>
-        Right now this product is locked,
-        only VIP members can access this product.
+      <h2 class="vip-lock-title">
+        Early Access is Live
+      </h2>
+
+      <p class="vip-lock-description">
+        This product is currently available exclusively
+        to our VIP members.
       </p>
 
-      <p>
-        Public access opens in:
-        <strong
+      <div class="vip-timer-box">
+        <span class="vip-timer-label">
+          PUBLIC ACCESS OPENS IN
+        </span>
+
+        <div
           id="vip-countdown-{{ product.id }}"
+          class="vip-countdown"
         >
           00:00
-        </strong>
+        </div>
+      </div>
+
+      <div class="vip-divider"></div>
+
+      <p class="vip-cta-text">
+        Connect your Twitch account and verify your
+        eligibility for VIP access.
       </p>
 
       <button
         type="button"
         id="vip-twitch-button-{{ product.id }}"
+        class="vip-twitch-button"
       >
-        Verify Twitch to Become VIP
+        <span class="vip-twitch-icon">
+          ⚡
+        </span>
+
+        Verify Twitch & Unlock VIP Access
       </button>
     </div>
   </div>
+
+  <style>
+    .vip-lock-card {
+      max-width: 650px;
+      margin: 30px auto;
+      padding: 35px;
+      text-align: center;
+      border: 1px solid #e5e5e5;
+      border-radius: 16px;
+      background: #ffffff;
+      box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .vip-lock-badge {
+      display: inline-block;
+      padding: 7px 14px;
+      margin-bottom: 18px;
+      border-radius: 999px;
+      background: #000000;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+    }
+
+    .vip-lock-title {
+      margin: 0 0 12px;
+      font-size: 30px;
+      font-weight: 700;
+      color: #111111;
+    }
+
+    .vip-lock-description {
+      max-width: 500px;
+      margin: 0 auto;
+      color: #666666;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .vip-timer-box {
+      margin: 28px 0;
+      padding: 22px;
+      border-radius: 12px;
+      background: #f7f7f7;
+    }
+
+    .vip-timer-label {
+      display: block;
+      margin-bottom: 10px;
+      color: #777777;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+    }
+
+    .vip-countdown {
+      color: #111111;
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .vip-divider {
+      width: 60px;
+      height: 2px;
+      margin: 25px auto;
+      background: #dddddd;
+    }
+
+    .vip-cta-text {
+      margin-bottom: 20px;
+      color: #666666;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .vip-twitch-button {
+      width: 100%;
+      padding: 16px 24px;
+      border: none;
+      border-radius: 10px;
+      background: #000000;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition:
+        transform 0.2s ease,
+        opacity 0.2s ease;
+    }
+
+    .vip-twitch-button:hover {
+      opacity: 0.85;
+      transform: translateY(-2px);
+    }
+
+    .vip-twitch-button:active {
+      transform: translateY(0);
+    }
+
+    .vip-twitch-icon {
+      margin-right: 8px;
+    }
+
+    @media screen and (max-width: 749px) {
+      .vip-lock-card {
+        margin: 20px 10px;
+        padding: 25px 20px;
+      }
+
+      .vip-lock-title {
+        font-size: 24px;
+      }
+
+      .vip-countdown {
+        font-size: 34px;
+      }
+    }
+  </style>
 
   <script>
     document.addEventListener(
@@ -38,17 +182,17 @@
 
         const lockMessage =
           document.getElementById(
-            "vip-lock-message-{{ product.id }}"
+            "vip-lock-message-{{ product.id }}",
           );
 
         const countdown =
           document.getElementById(
-            "vip-countdown-{{ product.id }}"
+            "vip-countdown-{{ product.id }}",
           );
 
         const twitchButton =
           document.getElementById(
-            "vip-twitch-button-{{ product.id }}"
+            "vip-twitch-button-{{ product.id }}",
           );
 
         function getPurchaseButtons() {
@@ -83,10 +227,8 @@
           return (
             String(minutes).padStart(2, "0") +
             ":" +
-            String(remainingSeconds).padStart(
-              2,
-              "0",
-            )
+            String(remainingSeconds)
+              .padStart(2, "0")
           );
         }
 
@@ -124,39 +266,44 @@
               formatTime(remainingSeconds);
 
             const timer =
-              setInterval(function () {
-                remainingSeconds--;
+              setInterval(
+                function () {
+                  remainingSeconds--;
 
-                if (
-                  remainingSeconds <= 0
-                ) {
-                  clearInterval(timer);
+                  if (
+                    remainingSeconds <= 0
+                  ) {
+                    clearInterval(timer);
+
+                    countdown.textContent =
+                      "00:00";
+
+                    window.location.reload();
+
+                    return;
+                  }
 
                   countdown.textContent =
-                    "00:00";
-
-                  window.location.reload();
-
-                  return;
-                }
-
-                countdown.textContent =
-                  formatTime(remainingSeconds);
-              }, 1000);
+                    formatTime(
+                      remainingSeconds,
+                    );
+                },
+                1000,
+              );
           }
 
-          twitchButton.addEventListener(
-            "click",
-            function () {
-              console.log(
-                "Twitch verification clicked",
-              );
+          if (twitchButton) {
+            twitchButton.addEventListener(
+              "click",
+              function () {
+                const returnTo =
+                  window.location.href;
 
-              alert(
-                "Twitch verification will be connected next.",
-              );
-            },
-          );
+                window.location.href =
+                  `/apps/vip-access/twitch/connect?return_to=${encodeURIComponent(returnTo)}`;
+              },
+            );
+          }
         } catch (error) {
           console.error(
             "VIP Access check failed:",
