@@ -2,137 +2,163 @@ import db from "../db.server";
 import { sendEmail } from "./email.server";
 
 function getVipCustomers(shopId, threshold) {
-  return db.customer.findMany({
-    where: {
-      shopId,
+    return db.customer.findMany({
+        where: {
+            shopId,
 
-      OR: [
-        {
-          manualVip: {
-            is: {
-              isActive: true,
-            },
-          },
+            OR: [
+                {
+                    manualVip: {
+                        is: {
+                            isActive: true,
+                        },
+                    },
+                },
+
+                {
+                    spending: {
+                        is: {
+                            eligibleAmount: {
+                                gte: threshold,
+                            },
+                        },
+                    },
+                },
+
+                {
+                    twitchConnection: {
+                        is: {
+                            isSubscriber: true,
+                        },
+                    },
+                },
+            ],
         },
 
-        {
-          spending: {
-            is: {
-              eligibleAmount: {
-                gte: threshold,
-              },
-            },
-          },
+        include: {
+            manualVip: true,
+            spending: true,
+            twitchConnection: true,
         },
-
-        {
-          twitchConnection: {
-            is: {
-              isSubscriber: true,
-            },
-          },
-        },
-      ],
-    },
-
-    include: {
-      manualVip: true,
-      spending: true,
-      twitchConnection: true,
-    },
-  });
+    });
 }
 
 export async function sendEarlyAccessEmails({
-  shopId,
-  earlyAccessEvent,
+    shopId,
+    earlyAccessEvent,
 }) {
-  const spendingRule =
-    await db.spendingRule.findUnique({
-      where: {
-        shopId,
-      },
-    });
+    const emailSettings =
+        await db.emailAutomationSettings.findUnique({
+            where: {
+                shopId,
+            },
+        });
 
-  const threshold =
-    spendingRule?.enabled
-      ? spendingRule.threshold
-      : Number.MAX_SAFE_INTEGER;
+    if (
+        emailSettings &&
+        !emailSettings.earlyAccessEnabled
+    ) {
+        console.log(
+            "EARLY ACCESS EMAIL AUTOMATION IS DISABLED",
+        );
 
-const shop =
-  await db.shop.findUnique({
-    where: {
-      id: shopId,
-    },
-  });
+        return;
+    }
 
-const productUrl =
-  `https://${shop.domain}/products/${earlyAccessEvent.productHandle}`;
+    const spendingRule =
+        await db.spendingRule.findUnique({
+            where: {
+                shopId,
+            },
+        });
 
-  const customers =
-    await getVipCustomers(
-      shopId,
-      threshold,
+    const threshold =
+        spendingRule?.enabled
+            ? spendingRule.threshold
+            : Number.MAX_SAFE_INTEGER;
+
+    const shop =
+        await db.shop.findUnique({
+            where: {
+                id: shopId,
+            },
+        });
+
+    const productUrl =
+        `https://${shop.domain}/products/${earlyAccessEvent.productHandle}`;
+
+    const customers =
+        await getVipCustomers(
+            shopId,
+            threshold,
+        );
+
+    console.log(
+        "EARLY ACCESS EMAIL CUSTOMERS:",
+        customers.length,
     );
 
-  console.log(
-    "EARLY ACCESS EMAIL CUSTOMERS:",
-    customers.length,
-  );
+    for (const customer of customers) {
+        if (!customer.email) {
+            console.log(
+                "SKIPPING CUSTOMER WITHOUT EMAIL:",
+                customer.id,
+            );
 
-  for (const customer of customers) {
-    if (!customer.email) {
-      console.log(
-        "SKIPPING CUSTOMER WITHOUT EMAIL:",
-        customer.id,
-      );
+            continue;
+        }
 
-      continue;
-    }
+        const existingLog =
+            await db.emailLog.findUnique({
+                where: {
+                    customerId_earlyAccessEventId_automationType: {
+                        customerId: customer.id,
+                        earlyAccessEventId:
+                            earlyAccessEvent.id,
+                        automationType: "EARLY_ACCESS",
+                    },
+                },
+            });
 
-    const existingLog =
-      await db.emailLog.findUnique({
-        where: {
-          customerId_earlyAccessEventId_automationType: {
-            customerId: customer.id,
-            earlyAccessEventId:
-              earlyAccessEvent.id,
-            automationType: "EARLY_ACCESS",
-          },
-        },
-      });
+        if (existingLog) {
+            console.log(
+                "EMAIL ALREADY PROCESSED:",
+                {
+                    customerId: customer.id,
+                    eventId: earlyAccessEvent.id,
+                },
+            );
 
-    if (existingLog) {
-      console.log(
-        "EMAIL ALREADY PROCESSED:",
-        {
-          customerId: customer.id,
-          eventId: earlyAccessEvent.id,
-        },
-      );
+            continue;
+        }
 
-      continue;
-    }
+        const emailLog =
+            await db.emailLog.create({
+                data: {
+                    shopId,
+                    customerId: customer.id,
+                    earlyAccessEventId:
+                        earlyAccessEvent.id,
+                    automationType: "EARLY_ACCESS",
+                    status: "PENDING",
+                },
+            });
 
-    const emailLog =
-      await db.emailLog.create({
-        data: {
-          shopId,
-          customerId: customer.id,
-          earlyAccessEventId:
-            earlyAccessEvent.id,
-          automationType: "EARLY_ACCESS",
-          status: "PENDING",
-        },
-      });
+        try {
+            await sendEmail({
+                to: customer.email,
 
-    try {
-      await sendEmail({
-        to: customer.email,
+                subject:
+    (
+        emailSettings?.earlyAccessSubject ||
+        "VIP Early Access: {{product}} is live 🚀"
+    ).replace(
+        "{{product}}",
+        earlyAccessEvent.productTitleSnapshot ||
+            "New Product",
+    ),
 
-        subject: `VIP Early Access: ${earlyAccessEvent.productTitleSnapshot} is live 🚀`,
-
-        html: `
+                html: `
           <div style="
             font-family: Arial, sans-serif;
             max-width: 600px;
@@ -226,45 +252,45 @@ const productUrl =
             </p>
           </div>
         `,
-      });
+            });
 
-      await db.emailLog.update({
-        where: {
-          id: emailLog.id,
-        },
+            await db.emailLog.update({
+                where: {
+                    id: emailLog.id,
+                },
 
-        data: {
-          status: "SENT",
-          sentAt: new Date(),
-        },
-      });
+                data: {
+                    status: "SENT",
+                    sentAt: new Date(),
+                },
+            });
 
-      console.log(
-        "EARLY ACCESS EMAIL SENT:",
-        {
-          customerId: customer.id,
-          email: customer.email,
-          eventId: earlyAccessEvent.id,
-        },
-      );
-    } catch (error) {
-      console.error(
-        "EARLY ACCESS EMAIL FAILED:",
-        {
-          customerId: customer.id,
-          error,
-        },
-      );
+            console.log(
+                "EARLY ACCESS EMAIL SENT:",
+                {
+                    customerId: customer.id,
+                    email: customer.email,
+                    eventId: earlyAccessEvent.id,
+                },
+            );
+        } catch (error) {
+            console.error(
+                "EARLY ACCESS EMAIL FAILED:",
+                {
+                    customerId: customer.id,
+                    error,
+                },
+            );
 
-      await db.emailLog.update({
-        where: {
-          id: emailLog.id,
-        },
+            await db.emailLog.update({
+                where: {
+                    id: emailLog.id,
+                },
 
-        data: {
-          status: "FAILED",
-        },
-      });
+                data: {
+                    status: "FAILED",
+                },
+            });
+        }
     }
-  }
 }
