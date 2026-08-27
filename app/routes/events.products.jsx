@@ -4,7 +4,7 @@ import db from "../db.server.js";
 import {
   createEarlyAccessEvent,
 } from "../services/early-access.server.js";
-
+import { sendEarlyAccessEmails } from "../services/early-access-email.server";
 
 function normalizeShopifyId(id) {
   if (!id) {
@@ -201,6 +201,10 @@ try {
         earlyAccessEvent.status,
     },
   );
+  await sendEarlyAccessEmails({
+  shopId: localShop.id,
+  earlyAccessEvent: earlyAccessEvent,
+});
 } catch (error) {
   console.log(
     "EARLY ACCESS EVENT NOT CREATED",
