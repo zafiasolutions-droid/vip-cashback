@@ -9,13 +9,26 @@ export const loader = async ({ request }) => {
   try {
     // Verify that this request came through
     // the Shopify App Proxy.
-    const { session } =
-      await authenticate.public.appProxy(request);
+   await authenticate.public.appProxy(request);
 
-    const shop =
-      await getOrCreateShop(session.shop);
+const url = new URL(request.url);
 
-    const url = new URL(request.url);
+const shopDomain =
+  url.searchParams.get("shop");
+
+if (!shopDomain) {
+  return Response.json(
+    {
+      allowed: false,
+      reason: "SHOP_NOT_FOUND",
+      status: null,
+    },
+    { status: 400 },
+  );
+}
+
+const shop =
+  await getOrCreateShop(shopDomain);
 
     const productId =
       url.searchParams.get("product_id");
