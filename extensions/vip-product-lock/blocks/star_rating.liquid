@@ -8,62 +8,163 @@
       <h3>VIP Early Access</h3>
 
       <p>
-        This product is currently available exclusively to VIP customers.
+        Right now this product is locked,
+        only VIP members can access this product.
       </p>
+
+      <p>
+        Public access opens in:
+        <strong
+          id="vip-countdown-{{ product.id }}"
+        >
+          00:00
+        </strong>
+      </p>
+
+      <button
+        type="button"
+        id="vip-twitch-button-{{ product.id }}"
+      >
+        Verify Twitch to Become VIP
+      </button>
     </div>
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", async function () {
-      const productId = "{{ product.id }}";
+    document.addEventListener(
+      "DOMContentLoaded",
+      async function () {
+        const productId = "{{ product.id }}";
 
-      const lockContainer =
-        document.getElementById(
-          "vip-product-lock-{{ product.id }}"
-        );
+        const lockMessage =
+          document.getElementById(
+            "vip-lock-message-{{ product.id }}"
+          );
 
-      const lockMessage =
-        document.getElementById(
-          "vip-lock-message-{{ product.id }}"
-        );
+        const countdown =
+          document.getElementById(
+            "vip-countdown-{{ product.id }}"
+          );
 
-      try {
-        const response = await fetch(
-          `/apps/vip-access?product_id=${productId}`
-        );
+        const twitchButton =
+          document.getElementById(
+            "vip-twitch-button-{{ product.id }}"
+          );
 
-        const result = await response.json();
-
-        console.log(
-          "VIP Access Result:",
-          result
-        );
-
-        if (!result.allowed) {
-          lockMessage.style.display = "block";
-
-          // Hide product purchase buttons.
-          const purchaseButtons =
-  document.querySelectorAll(
-    [
-      'button[type="submit"][name="add"]',
-      '.shopify-payment-button',
-      '.shopify-payment-button__button',
-      '[data-shopify="payment-button"]',
-    ].join(","),
-  );
-
-purchaseButtons.forEach((element) => {
-  element.style.display = "none";
-});
+        function getPurchaseButtons() {
+          return document.querySelectorAll(
+            [
+              'button[type="submit"][name="add"]',
+              '.shopify-payment-button',
+              '.shopify-payment-button__button',
+              '[data-shopify="payment-button"]',
+            ].join(","),
+          );
         }
-      } catch (error) {
-        console.error(
-          "VIP Access check failed:",
-          error
-        );
-      }
-    });
+
+        function hidePurchaseButtons() {
+          const purchaseButtons =
+            getPurchaseButtons();
+
+          purchaseButtons.forEach(
+            function (element) {
+              element.style.display = "none";
+            },
+          );
+        }
+
+        function formatTime(seconds) {
+          const minutes =
+            Math.floor(seconds / 60);
+
+          const remainingSeconds =
+            seconds % 60;
+
+          return (
+            String(minutes).padStart(2, "0") +
+            ":" +
+            String(remainingSeconds).padStart(
+              2,
+              "0",
+            )
+          );
+        }
+
+        try {
+          const response = await fetch(
+            `/apps/vip-access?product_id=${productId}`,
+          );
+
+          const result =
+            await response.json();
+
+          console.log(
+            "VIP Access Result:",
+            result,
+          );
+
+          const isVipActive =
+            result.status === "VIP_ACTIVE";
+
+          if (
+            isVipActive &&
+            !result.allowed
+          ) {
+            lockMessage.style.display =
+              "block";
+
+            hidePurchaseButtons();
+
+            let remainingSeconds =
+              Number(
+                result.remainingSeconds || 0,
+              );
+
+            countdown.textContent =
+              formatTime(remainingSeconds);
+
+            const timer =
+              setInterval(function () {
+                remainingSeconds--;
+
+                if (
+                  remainingSeconds <= 0
+                ) {
+                  clearInterval(timer);
+
+                  countdown.textContent =
+                    "00:00";
+
+                  window.location.reload();
+
+                  return;
+                }
+
+                countdown.textContent =
+                  formatTime(remainingSeconds);
+              }, 1000);
+          }
+
+          twitchButton.addEventListener(
+            "click",
+            function () {
+              console.log(
+                "Twitch verification clicked",
+              );
+
+              alert(
+                "Twitch verification will be connected next.",
+              );
+            },
+          );
+        } catch (error) {
+          console.error(
+            "VIP Access check failed:",
+            error,
+          );
+        }
+      },
+    );
   </script>
 {% endif %}
 
